@@ -4,7 +4,8 @@
 #include "PlayerCharacter.h"
 #include "Camera/CameraComponent.h"
 #include "TreeFellers/Axe/Axe.h"
-
+#include "Animation/AnimMontage.h"
+#include "Net/UnrealNetwork.h"
 APlayerCharacter::APlayerCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -14,7 +15,10 @@ APlayerCharacter::APlayerCharacter()
 	PlayerCamera->bUsePawnControlRotation = true;
 
 	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
-	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
+	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block); 
+	
+	NetUpdateFrequency = 66.f;
+	MinNetUpdateFrequency = 33.f;
 }
 
 void APlayerCharacter::BeginPlay()
@@ -32,13 +36,25 @@ void APlayerCharacter::BeginPlay()
 	}
 }
 
-
-
 void APlayerCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	if (bCalculateAttackCollision && Axe)
+	{
+		Axe->CalculateAxeCollision();
+	}
+
 }
+
+void APlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(APlayerCharacter, bIsSwingingAxe);
+}
+
+#pragma region PlayerInput
 
 void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
@@ -48,10 +64,9 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	PlayerInputComponent->BindAxis("MoveRight", this, &ThisClass::MoveRight);
 	PlayerInputComponent->BindAxis("Turn", this, &ThisClass::Turn);
 	PlayerInputComponent->BindAxis("LookUp", this, &ThisClass::LookUp);
+	PlayerInputComponent->BindAction("Attack", EInputEvent::IE_Pressed, this, &ThisClass::AttackButtonPressed);
 
 }
-
-#pragma region PlayerInput
 
 void APlayerCharacter::MoveForward(float AxisValue)
 {
@@ -87,6 +102,44 @@ void APlayerCharacter::LookUp(float AxisValue)
 	AddControllerPitchInput(AxisValue);
 }
 
+void APlayerCharacter::AttackButtonPressed()
+{
+	if (!bIsSwingingAxe)
+	{
+		if (!HasAuthority())
+		{
+			PlayAnimMontage(AxeSwing);
+		}
+
+		bIsSwingingAxe = true;
+		ServerSwingAxe();
+	}
+}
+
 #pragma endregion Player Input 
 
 
+void APlayerCharacter::ServerSwingAxe_Implementation()
+{
+	PlayAnimMontage(AxeSwing);
+
+	MulticastSwingAxe();
+}
+
+void APlayerCharacter::MulticastSwingAxe_Implementation()
+{
+	if (!IsLocallyControlled())
+	{
+		PlayAnimMontage(AxeSwing);
+	}
+}
+
+void APlayerCharacter::StartCalculateAttackCollision()
+{
+	bCalculateAttackCollision = true;
+}
+
+void APlayerCharacter::StopCalculateAttackCollision()
+{
+	bCalculateAttackCollision = false;
+}

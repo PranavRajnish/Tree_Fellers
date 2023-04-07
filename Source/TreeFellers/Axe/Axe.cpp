@@ -3,6 +3,8 @@
 
 #include "Axe.h"
 #include "Components/StaticMeshComponent.h"
+#include "Components/SceneComponent.h"
+#include "Kismet/KismetSystemLibrary.h"
 
 AAxe::AAxe()
 {
@@ -11,6 +13,8 @@ AAxe::AAxe()
 	Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Axe Mesh"));
 	Mesh->SetupAttachment(RootComponent);
 	Mesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+	CollisionPoint = CreateDefaultSubobject<USceneComponent>(TEXT("Collision Point"));
+	CollisionPoint->SetupAttachment(Mesh);
 
 }
 
@@ -26,3 +30,16 @@ void AAxe::Tick(float DeltaTime)
 
 }
 
+
+void AAxe::CalculateAxeCollision()
+{
+	//FVector SocketLocation = Mesh->GetSocketLocation(FName("CollisionSocket"));
+	FVector CollisionLocation = CollisionPoint->GetComponentLocation();
+
+	TArray<TEnumAsByte<EObjectTypeQuery>> TraceObjectTypes;
+	TraceObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_GameTraceChannel1));
+	FHitResult HitResult;
+
+	bool bHasHit = UKismetSystemLibrary::SphereTraceSingleForObjects(this, CollisionLocation, CollisionLocation, CollisionRadius,
+				   TraceObjectTypes, false, TArray<AActor*>(), EDrawDebugTrace::ForDuration, HitResult, true);
+}

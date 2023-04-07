@@ -15,12 +15,19 @@ public:
 	AAxe();
 	virtual void Tick(float DeltaTime) override;
 
+	void CalculateAxeCollision();
+
 protected:
 	virtual void BeginPlay() override;
 
 private:
 	UPROPERTY(VisibleAnywhere)
 	class UStaticMeshComponent* Mesh;
+	UPROPERTY(VisibleAnywhere)
+	class USceneComponent* CollisionPoint;
+
+	UPROPERTY(EditAnywhere)
+	float CollisionRadius = 20.f;
 
 public:	
 

@@ -18,9 +18,17 @@ public:
 	virtual void NativeInitializeAnimation() override;
 	virtual void NativeUpdateAnimation(float DeltaTime) override;
 
+protected:
+	UFUNCTION(BlueprintCallable)
+	void AxeSwingFinished();
+
 private:
 	UPROPERTY(BlueprintReadOnly, Category = Character, meta = (AllowPrivateAccess = "true"))
 	class APlayerCharacter* PlayerCharacter;
 	UPROPERTY(BlueprintReadOnly, Category = Character, meta = (AllowPrivateAccess = "true"))
 	float Pitch;
+	UPROPERTY(BlueprintReadOnly, Category = Character, meta = (AllowPrivateAccess = "true"))
+	bool bIsSwingingAxe;
+
+	float CalculateAOPitch();
 };
