@@ -59,6 +59,6 @@ private:
 public:	
 	FORCEINLINE bool GetIsSwingingAxe() const { return bIsSwingingAxe; }
 	FORCEINLINE void SetIsSwingingAxe(bool isSwinging) { bIsSwingingAxe = isSwinging; }
-
+	FORCEINLINE AAxe* GetAxe() const { return Axe; }
 
 };

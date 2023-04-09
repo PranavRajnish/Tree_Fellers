@@ -40,7 +40,7 @@ void APlayerCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (bCalculateAttackCollision && Axe)
+	if (HasAuthority() && bCalculateAttackCollision && Axe)
 	{
 		Axe->CalculateAxeCollision();
 	}
@@ -142,4 +142,9 @@ void APlayerCharacter::StartCalculateAttackCollision()
 void APlayerCharacter::StopCalculateAttackCollision()
 {
 	bCalculateAttackCollision = false;
+
+	if (Axe)
+	{
+		Axe->SetHasHitThisSwing(false);
+	}
 }

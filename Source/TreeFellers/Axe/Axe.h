@@ -29,6 +29,8 @@ private:
 	UPROPERTY(EditAnywhere)
 	float CollisionRadius = 20.f;
 
-public:	
+	bool bHasHitThisSwing = false;
 
+public:	
+	FORCEINLINE void SetHasHitThisSwing(bool bHasHit) { bHasHitThisSwing = bHasHit; }
 };

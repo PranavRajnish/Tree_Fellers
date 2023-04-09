@@ -5,11 +5,13 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/SceneComponent.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "TreeFellers/Tree/ChoppableTree.h"
 
 AAxe::AAxe()
 {
 	PrimaryActorTick.bCanEverTick = true;
 
+	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootComponent"));
 	Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Axe Mesh"));
 	Mesh->SetupAttachment(RootComponent);
 	Mesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
@@ -33,13 +35,26 @@ void AAxe::Tick(float DeltaTime)
 
 void AAxe::CalculateAxeCollision()
 {
-	//FVector SocketLocation = Mesh->GetSocketLocation(FName("CollisionSocket"));
-	FVector CollisionLocation = CollisionPoint->GetComponentLocation();
+	if (!bHasHitThisSwing && HasAuthority())
+	{
+		//FVector SocketLocation = Mesh->GetSocketLocation(FName("CollisionSocket"));
+		FVector CollisionLocation = CollisionPoint->GetComponentLocation();
 
-	TArray<TEnumAsByte<EObjectTypeQuery>> TraceObjectTypes;
-	TraceObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_GameTraceChannel1));
-	FHitResult HitResult;
+		TArray<TEnumAsByte<EObjectTypeQuery>> TraceObjectTypes;
+		TraceObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_GameTraceChannel1));
+		FHitResult HitResult;
 
-	bool bHasHit = UKismetSystemLibrary::SphereTraceSingleForObjects(this, CollisionLocation, CollisionLocation, CollisionRadius,
-				   TraceObjectTypes, false, TArray<AActor*>(), EDrawDebugTrace::ForDuration, HitResult, true);
+		bHasHitThisSwing = UKismetSystemLibrary::SphereTraceSingleForObjects(this, CollisionLocation, CollisionLocation, CollisionRadius,
+			TraceObjectTypes, false, TArray<AActor*>(), EDrawDebugTrace::ForDuration, HitResult, true);
+
+		if (bHasHitThisSwing)
+		{
+			AChoppableTree* Tree = Cast<AChoppableTree>(HitResult.GetActor());
+			if (Tree)
+			{
+				Tree->AxeImpact(HitResult);
+			}
+		}	
+	}
+	
 }
