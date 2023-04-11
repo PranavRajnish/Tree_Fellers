@@ -39,20 +39,20 @@ void AAxe::CalculateAxeCollision()
 	{
 		//FVector SocketLocation = Mesh->GetSocketLocation(FName("CollisionSocket"));
 		FVector CollisionLocation = CollisionPoint->GetComponentLocation();
-
+		//UE_LOG(LogTemp, Warning, TEXT("Axe point : %s"), *CollisionLocation.ToString());
 		TArray<TEnumAsByte<EObjectTypeQuery>> TraceObjectTypes;
 		TraceObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_GameTraceChannel1));
 		FHitResult HitResult;
 
 		bHasHitThisSwing = UKismetSystemLibrary::SphereTraceSingleForObjects(this, CollisionLocation, CollisionLocation, CollisionRadius,
-			TraceObjectTypes, false, TArray<AActor*>(), EDrawDebugTrace::ForDuration, HitResult, true);
+			TraceObjectTypes, false, TArray<AActor*>(), EDrawDebugTrace::None , HitResult, true);
 
 		if (bHasHitThisSwing)
 		{
 			AChoppableTree* Tree = Cast<AChoppableTree>(HitResult.GetActor());
 			if (Tree)
 			{
-				Tree->AxeImpact(HitResult);
+				Tree->AxeImpact(CollisionLocation, HitResult.ImpactNormal, this);
 			}
 		}	
 	}

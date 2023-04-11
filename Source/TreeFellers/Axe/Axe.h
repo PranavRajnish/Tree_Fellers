@@ -17,6 +17,7 @@ public:
 
 	void CalculateAxeCollision();
 
+
 protected:
 	virtual void BeginPlay() override;
 
@@ -26,11 +27,16 @@ private:
 	UPROPERTY(VisibleAnywhere)
 	class USceneComponent* CollisionPoint;
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, Category = "Defaults")
 	float CollisionRadius = 20.f;
-
+	UPROPERTY(EditAnywhere, Category = "Defaults")
+	float ImpactRadius = 20.f;
+	UPROPERTY(EditAnywhere, Category = "Defaults")
+	float ImpactDepth = 10.f;
 	bool bHasHitThisSwing = false;
 
 public:	
 	FORCEINLINE void SetHasHitThisSwing(bool bHasHit) { bHasHitThisSwing = bHasHit; }
+	FORCEINLINE float GetImpactRadius() const { return ImpactRadius; }
+	FORCEINLINE float GetImpactDepth() const { return ImpactDepth; }
 };

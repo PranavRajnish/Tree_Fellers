@@ -65,7 +65,7 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	PlayerInputComponent->BindAxis("Turn", this, &ThisClass::Turn);
 	PlayerInputComponent->BindAxis("LookUp", this, &ThisClass::LookUp);
 	PlayerInputComponent->BindAction("Attack", EInputEvent::IE_Pressed, this, &ThisClass::AttackButtonPressed);
-
+	PlayerInputComponent->BindAction("Jump", EInputEvent::IE_Pressed, this, &ACharacter::Jump);
 }
 
 void APlayerCharacter::MoveForward(float AxisValue)

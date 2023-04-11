@@ -17,12 +17,11 @@ public:
 	AChoppableTree();
 	virtual void Tick(float DeltaTime) override;
 
-	void AxeImpact(FHitResult ImpactPoint);
+	void AxeImpact(FVector ImpactLocation, FVector ImpactNormal, class AAxe* Axe);
 
 protected:
 	virtual void BeginPlay() override;
 
-	void OnHit(AActor* SelfActor, AActor* OtherActor, FVector NormalImpulse, const FHitResult& Hit);
 	void GenerateMesh();
 	void Subdivide(int32 A, int32 B, int32 C);
 
@@ -43,6 +42,7 @@ protected:
 	TArray<FLinearColor> VertexColors;
 
 	TArray<FVector2D> UV0;
+	TArray<FColor> UpVertexColors;
 	TArray<FProcMeshTangent> Tangents;
 
 	UPROPERTY(VisibleAnywhere, Category = "Defaults")
@@ -67,12 +67,12 @@ protected:
 	int32 TempIndexBC;
 	int32 TempIndexCA;
 
-	UPROPERTY(EditAnywhere)
-	float ImpactDistance = 100.f;
 
 private:
 	UPROPERTY(EditAnywhere)
 	class UStaticMeshComponent* TreeStaticMesh;
+	UPROPERTY(EditAnywhere)
+	class UMaterialInterface* TreeMaterial;
 
 	//TArray<FVector>& GetVerticesOfStaticMesh();
 

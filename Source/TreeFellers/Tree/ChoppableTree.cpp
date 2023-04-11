@@ -5,6 +5,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "KismetProceduralMeshLibrary.h"
 #include "DrawDebugHelpers.h"
+#include "TreeFellers/Axe/Axe.h"
 
 AChoppableTree::AChoppableTree()
 {
@@ -34,6 +35,10 @@ void AChoppableTree::BeginPlay()
 		//UKismetProceduralMeshLibrary::CopyProceduralMeshFromStaticMeshComponent(TreeStaticMesh, 0, TreeProcMesh, true);
 		UKismetProceduralMeshLibrary::GetSectionFromStaticMesh(TreeStaticMesh->GetStaticMesh(), 0, 0, Vertices, Triangles, Normals, UV0, Tangents);
 		GenerateMesh();
+		UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, UV0, Normals, Tangents);
+		TreeProcMesh->UpdateMeshSection(0, Vertices, Normals, UV0, UpVertexColors, Tangents);
+
+		TreeProcMesh->SetMaterial(0, TreeMaterial);
 	}
 
 }
@@ -169,39 +174,51 @@ void AChoppableTree::Subdivide(int32 A, int32 B, int32 C)
 	IndexC += 3;
 }
 
-void AChoppableTree::AxeImpact(FHitResult HitResult)
+void AChoppableTree::AxeImpact(FVector ImpactLocation, FVector ImpactNormal, AAxe* Axe)
 {
-	UE_LOG(LogTemp, Warning, TEXT("Axe Impact"));
-	DrawDebugLine(GetWorld(), HitResult.ImpactPoint, HitResult.ImpactPoint + (HitResult.ImpactNormal * 100.f), FColor::Blue, false, 10.f, 0, 2.f);
-	/*for (int32 i = 0; i < Vertices.Num(); i++)
-	{
-		if ((Vertices[i] - ImpactPoint).Size() < ImpactDistance)
-		{
+	if (Vertices.Num() == 0) return;
 
+	//UE_LOG(LogTemp, Warning, TEXT("Impact Location : %s"), *ImpactLocation.ToString());
+
+	/*DrawDebugLine(GetWorld(), ImpactLocation, ImpactLocation + (ImpactNormal * 100.f), FColor::Blue, false, 10.f, 0, 2.f);
+	for (int32 i = 0; i < Vertices.Num(); i++)
+	{
+		FVector GlobalVertexPosition = GetActorLocation() + Vertices[i];
+		if ((GlobalVertexPosition - ImpactLocation).Size() < Axe->GetImpactRadius())
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Vertice before impact: %s"), *Vertices[i].ToString());
+			FVector ImpactDirection = -ImpactNormal;
+			ImpactDirection.Normalize();
+			UE_LOG(LogTemp, Warning, TEXT("Vertice shift direction: %s"), *ImpactDirection.ToString());
+			UE_LOG(LogTemp, Warning, TEXT("Vertice shift ratio: %d"), (GlobalVertexPosition - ImpactLocation).Size() / Axe->GetImpactRadius());
+			float VertexShift = FMath::Lerp(Axe->GetImpactDepth(), 0.f, (GlobalVertexPosition - ImpactLocation).Size() / Axe->GetImpactRadius());
+			UE_LOG(LogTemp, Warning, TEXT("Vertice shift amount: %d"), VertexShift);
+			Vertices[i] = Vertices[i] + (ImpactDirection * VertexShift);
+			UE_LOG(LogTemp, Warning, TEXT("Vertice after impact: %s"), *Vertices[i].ToString());
 		}
 	}*/
+
+	FVector ClosestVertex = GetActorLocation() + Vertices[0];
+	for (int32 i = 0; i < Vertices.Num(); i++)
+	{
+		FVector GlobalVertexPosition = GetActorLocation() + Vertices[i];
+		if ((GlobalVertexPosition - ImpactLocation).Size() < (ClosestVertex - ImpactLocation).Size())
+		{
+			ClosestVertex = GlobalVertexPosition;
+		}
+	}
+
+	for (int32 i = 0; i < Vertices.Num(); i++)
+	{
+		float DistanceToImpactVertex = (ClosestVertex - (Vertices[i] + GetActorLocation())).Size();
+		if (DistanceToImpactVertex < Axe->GetImpactRadius())
+		{
+			FVector ImpactDirection = FVector(-Vertices[i].X, -Vertices[i].Y, 0);
+			ImpactDirection.Normalize();
+			float VertexShift = FMath::Lerp(Axe->GetImpactDepth(), 0.f, DistanceToImpactVertex / Axe->GetImpactRadius());
+			Vertices[i] = Vertices[i] + (ImpactDirection * VertexShift);
+		}
+	}
+
+	TreeProcMesh->UpdateMeshSection(0, Vertices, Normals, UV0, UpVertexColors, Tangents);
 }
-
-//TArray<FVector>& AChoppableTree::GetVerticesOfStaticMesh()
-//{
-//	if (!TreeStaticMesh || !TreeStaticMesh->GetStaticMesh() || !TreeStaticMesh->GetStaticMesh()->GetRenderData()) return;
-//
-//	TArray<FVector> Vertices;
-//
-//	
-//	if (TreeStaticMesh->GetStaticMesh()->GetRenderData()->LODResources.Num() > 0)
-//	{
-//		FPositionVertexBuffer* VertexBuffer = &TreeStaticMesh->GetStaticMesh()->GetRenderData()->LODResources[0].Get;
-//		if (VertexBuffer)
-//		{
-//			const int32 VertexCount = VertexBuffer->GetNumVertices();
-//			for (int32 Index = 0; Index < VertexCount; Index++)
-//			{
-//				//This is in the Static Mesh Actor Class, so it is location and tranform of the SMActor
-//				const FVector WorldSpaceVertexLocation = **GetActorLocation() + GetTransform().TransformVector(VertexBuffer->VertexPosition(Index)); **
-//					//add to output FVector array
-//			}
-//		}
-//	}
-//}
-
