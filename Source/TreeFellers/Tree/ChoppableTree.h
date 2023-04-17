@@ -24,12 +24,18 @@ public:
 protected:
 	virtual void BeginPlay() override;
 
-	// Mesh properties and functions
 	void GenerateMesh();
 	void Subdivide(int32 A, int32 B, int32 C);
 
-	UPROPERTY(EditAnywhere, Category = "Defaults")
+	void FitPhysicsCapsuleToSplit(FVector SplitPoint);
+	void SplitTree(FVector SplitPoint, FVector PlaneNormal);
+
+	UPROPERTY(VisibleAnywhere, Category = "Defaults")
 	UProceduralMeshComponent* TreeProcMesh;
+	UPROPERTY(VisibleAnywhere, Category = "Defaults")
+	UProceduralMeshComponent* TreeSplitProcMesh;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Defaults")
+	class UCapsuleComponent* Capsule;
 
 	UPROPERTY()
 	TArray<FVector> Vertices;
@@ -70,7 +76,7 @@ protected:
 	int32 TempIndexCA;
 
 private:
-	void CalculateMeshThicknes(FVector ImpactPoint);
+	void CalculateMeshThickness(FVector ImpactPoint);
 
 	UPROPERTY(EditAnywhere)
 	class UStaticMeshComponent* TreeStaticMesh;
@@ -78,14 +84,18 @@ private:
 	class UMaterialInterface* TreeMaterial;
 
 	// Calculating Thickness of Trunk
+	UPROPERTY(EditAnywhere, Category = "Defaults")
+	float MinDistanceFromCenter = 5.f;
+	UPROPERTY(EditAnywhere, Category = "Defaults")
+	float ThicknessThresholdForSplittingTree = 5.f;
 	UPROPERTY(VisibleAnywhere, Category = "Defaults")
 	int32 CurrentMinimumThicknessOfTrunk = 100.f;
 	UPROPERTY(EditAnywhere, Category = "Defaults")
-	float ThicknessThresholdForSplittingTree = 5.f;
-	UPROPERTY(EditAnywhere, Category = "Defaults")
 	float ThicknessTraceSpread = 5.f;
-
-	//TArray<FVector>& GetVerticesOfStaticMesh();
+	UPROPERTY(VisibleAnywhere, Category = "Defaults")
+	FVector FallDirection;
+	UPROPERTY()
+	float DistanceOfClosestVertexToCenter = 500.f;
 
 public:	
 
