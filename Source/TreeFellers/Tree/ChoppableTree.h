@@ -16,10 +16,9 @@ class TREEFELLERS_API AChoppableTree : public AActor
 public:	
 	AChoppableTree();
 	virtual void Tick(float DeltaTime) override;
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	void AxeImpact(FVector ImpactLocation, FVector ImpactNormal, class AAxe* Axe);
-	UFUNCTION(NetMulticast, Reliable)
-	void MulticastCalculateAxeImpact(FVector ImpactLocation, float ImpactRadius, float ImpactDepth);
 
 protected:
 	virtual void BeginPlay() override;
@@ -28,14 +27,22 @@ protected:
 	void Subdivide(int32 A, int32 B, int32 C);
 
 	void FitPhysicsCapsuleToSplit(FVector SplitPoint);
-	void SplitTree(FVector SplitPoint, FVector PlaneNormal);
+	void SplitTree(FVector SplitPoint, FVector ZVector);
+
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastCalculateAxeImpact(FVector ImpactLocation, float ImpactRadius, float ImpactDepth);
+	UFUNCTION(NetMulticast, Reliable)
+	void MulticastSplitTree(FVector SplitPoint, FVector ZVector);
+
 
 	UPROPERTY(VisibleAnywhere, Category = "Defaults")
 	UProceduralMeshComponent* TreeProcMesh;
 	UPROPERTY(VisibleAnywhere, Category = "Defaults")
-	UProceduralMeshComponent* TreeSplitProcMesh;
+	UProceduralMeshComponent* TreeStumpProcMesh;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Defaults")
 	class UCapsuleComponent* Capsule;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Defaults")
+	 UCapsuleComponent* StumpCapsule;
 
 	UPROPERTY()
 	TArray<FVector> Vertices;
@@ -75,6 +82,7 @@ protected:
 	int32 TempIndexBC;
 	int32 TempIndexCA;
 
+
 private:
 	void CalculateMeshThickness(FVector ImpactPoint);
 
@@ -84,18 +92,29 @@ private:
 	class UMaterialInterface* TreeMaterial;
 
 	// Calculating Thickness of Trunk
-	UPROPERTY(EditAnywhere, Category = "Defaults")
+	UPROPERTY(EditAnywhere, Category = "Thickness")
 	float MinDistanceFromCenter = 5.f;
-	UPROPERTY(EditAnywhere, Category = "Defaults")
+	UPROPERTY(EditAnywhere, Category = "Thickness")
 	float ThicknessThresholdForSplittingTree = 5.f;
-	UPROPERTY(VisibleAnywhere, Category = "Defaults")
+	UPROPERTY(VisibleAnywhere, Category = "Thickness")
 	int32 CurrentMinimumThicknessOfTrunk = 100.f;
-	UPROPERTY(EditAnywhere, Category = "Defaults")
+	UPROPERTY(EditAnywhere, Category = "Thickness")
 	float ThicknessTraceSpread = 5.f;
-	UPROPERTY(VisibleAnywhere, Category = "Defaults")
+
+	// Tree Split Properties
+	UPROPERTY(VisibleAnywhere, Replicated, Category = "Tree Split")
 	FVector FallDirection;
 	UPROPERTY()
-	float DistanceOfClosestVertexToCenter = 500.f;
+	float DistanceOfClosestVertexToCenter = 5000.f;
+	UPROPERTY(EditAnywhere, Category = "Tree Split")
+	float FallImpulse = 100.f;
+	UPROPERTY(EditAnywhere, Category = "Tree Split")
+	float MinDistanceFromCenterToBeAffectedByRandomOffset = 20.f;
+	UPROPERTY(EditAnywhere, Category = "Tree Split")
+	float SplitVertexRandomness = 10.f;
+	UPROPERTY(EditAnywhere, Category = "Tree Split")
+		float DownShiftOfVertices = 10.f;
+	
 
 public:	
 
