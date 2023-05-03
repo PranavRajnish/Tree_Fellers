@@ -34,15 +34,23 @@ protected:
 	UFUNCTION(NetMulticast, Reliable)
 	void MulticastSplitTree(FVector SplitPoint, FVector ZVector);
 
+	UPROPERTY(VisibleAnywhere, Category = "Defaults")
+	class UStaticMeshComponent* TrunkStaticMesh;
+	UPROPERTY(VisibleAnywhere, Category = "Defaults")
+	UStaticMeshComponent* BranchesStaticMesh;
 
 	UPROPERTY(VisibleAnywhere, Category = "Defaults")
 	UProceduralMeshComponent* TreeProcMesh;
 	UPROPERTY(VisibleAnywhere, Category = "Defaults")
 	UProceduralMeshComponent* TreeStumpProcMesh;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Defaults")
 	class UCapsuleComponent* Capsule;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Defaults")
 	 UCapsuleComponent* StumpCapsule;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Defaults")
+	class USplineComponent* CenterSpline;
 
 	UPROPERTY()
 	TArray<FVector> Vertices;
@@ -84,10 +92,13 @@ protected:
 
 
 private:
-	void CalculateMeshThickness(FVector ImpactPoint);
 
-	UPROPERTY(EditAnywhere)
-	class UStaticMeshComponent* TreeStaticMesh;
+
+
+	void CalculateMeshThickness(FVector ImpactPoint);
+	FVector GetClosestPointOnCenterSpline(FVector Point);
+	FVector GetImpactDirectionForLocalPoint(FVector LocalPoint);
+
 	UPROPERTY(EditAnywhere)
 	class UMaterialInterface* TreeMaterial;
 

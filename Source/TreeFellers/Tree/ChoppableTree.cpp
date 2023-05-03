@@ -10,6 +10,7 @@
 #include "TreeFellers/Axe/Axe.h"
 #include "Components/CapsuleComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "Components/SplineComponent.h"
 
 AChoppableTree::AChoppableTree()
 {
@@ -18,9 +19,12 @@ AChoppableTree::AChoppableTree()
 
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootComponent"));
 
-	TreeStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("StaticTreeMesh"));
-	TreeStaticMesh->SetupAttachment(RootComponent);
-	TreeStaticMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+	CenterSpline = CreateDefaultSubobject<USplineComponent>(TEXT("CenterSpline"));
+	CenterSpline->SetupAttachment(RootComponent);
+
+	TrunkStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("TrunkStaticMesh"));
+	TrunkStaticMesh->SetupAttachment(RootComponent);
+	TrunkStaticMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 
 	Capsule = CreateDefaultSubobject<UCapsuleComponent>(TEXT("PhysicsCapsule"));
 	Capsule->SetupAttachment(RootComponent);
@@ -41,6 +45,10 @@ AChoppableTree::AChoppableTree()
 	TreeProcMesh->SetupAttachment(Capsule);
 	TreeProcMesh->SetCollisionObjectType(ECollisionChannel::ECC_GameTraceChannel1);
 
+	BranchesStaticMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("BranchesStaticMesh"));
+	BranchesStaticMesh->SetupAttachment(TreeProcMesh);
+	BranchesStaticMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+
 	TreeStumpProcMesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("StumpProceduralMesh"));
 	TreeStumpProcMesh->SetupAttachment(StumpCapsule);
 
@@ -51,12 +59,12 @@ void AChoppableTree::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	if (TreeStaticMesh)
+	if (TrunkStaticMesh && TrunkStaticMesh->GetStaticMesh())
 	{
-		TreeStaticMesh->GetStaticMesh()->bAllowCPUAccess = true;
-		TreeStaticMesh->SetVisibility(false);
+		TrunkStaticMesh->GetStaticMesh()->bAllowCPUAccess = true;
+		TrunkStaticMesh->SetVisibility(false);
 		//UKismetProceduralMeshLibrary::CopyProceduralMeshFromStaticMeshComponent(TreeStaticMesh, 0, TreeProcMesh, true);
-		UKismetProceduralMeshLibrary::GetSectionFromStaticMesh(TreeStaticMesh->GetStaticMesh(), 0, 0, Vertices, Triangles, 
+		UKismetProceduralMeshLibrary::GetSectionFromStaticMesh(TrunkStaticMesh->GetStaticMesh(), 0, 0, Vertices, Triangles,
 			Normals, UV0, Tangents);
 		GenerateMesh();
 		for (int32 i = 0; i < Vertices.Num(); i++)
@@ -244,7 +252,11 @@ void AChoppableTree::MulticastCalculateAxeImpact_Implementation(FVector ImpactLo
 	{
 		float DistanceToImpactVertex = (ClosestVertex - (Vertices[i] + GetActorLocation())).Size();
 
-		FVector ImpactDirection = FVector(-Vertices[i].X, -Vertices[i].Y, 0);
+		FVector ImpactDirection = GetImpactDirectionForLocalPoint(Vertices[i]);
+
+		/*UE_LOG(LogTemp, Warning, TEXT("Old Impact Direction: %s"), *ImpactDirection2.ToString());
+		UE_LOG(LogTemp, Warning, TEXT("New Impact Direction: %s"), *ImpactDirection.ToString());*/
+
 		float DistanceToCenter = ImpactDirection.Size();
 		ImpactDirection.Normalize();
 		
@@ -361,6 +373,7 @@ void AChoppableTree::CalculateMeshThickness(FVector ImpactVertice)
 	}
 
 }
+
 
 void  AChoppableTree::SplitTree(FVector SplitPoint, FVector ZVector)
 {
@@ -597,3 +610,20 @@ void AChoppableTree::FitPhysicsCapsuleToSplit(FVector SplitPoint)
 
 }
 
+FVector AChoppableTree::GetClosestPointOnCenterSpline(FVector Point)
+{
+	if (!CenterSpline) return GetActorLocation();
+	
+	return CenterSpline->FindLocationClosestToWorldLocation(Point, ESplineCoordinateSpace::World);
+
+}
+
+FVector AChoppableTree::GetImpactDirectionForLocalPoint(FVector LocalPoint)
+{
+	if (!CenterSpline) return FVector(-LocalPoint.X, -LocalPoint.Y, 0);
+
+	FVector ClosestCenterPoint = GetClosestPointOnCenterSpline(GetActorLocation() + LocalPoint);
+
+	return FVector(ClosestCenterPoint.X - (GetActorLocation() + LocalPoint).X, 
+		ClosestCenterPoint.Y - (GetActorLocation() + LocalPoint).Y, 0.f);
+}
