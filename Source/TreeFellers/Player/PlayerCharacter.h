@@ -21,6 +21,7 @@ public:
 	void StartCalculateAttackCollision();
 	UFUNCTION(BlueprintCallable)
 	void StopCalculateAttackCollision();
+	void AxeImpact();
 
 protected:
 	virtual void BeginPlay() override;
@@ -48,6 +49,7 @@ private:
 	void LookUp(float AxisValue);
 	void AttackButtonPressed();
 
+	// Axe
 	UFUNCTION(Server, Reliable)
 	void ServerSwingAxe();
 	UFUNCTION(NetMulticast, Reliable)

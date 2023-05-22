@@ -148,3 +148,11 @@ void APlayerCharacter::StopCalculateAttackCollision()
 		Axe->SetHasHitThisSwing(false);
 	}
 }
+
+void APlayerCharacter::AxeImpact()
+{
+	UE_LOG(LogTemp, Warning, TEXT("Axe Impact On Player Character"));
+	StopAnimMontage(AxeSwing);
+	StopCalculateAttackCollision();
+	SetIsSwingingAxe(false);
+}

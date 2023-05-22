@@ -6,6 +6,7 @@
 #include "Components/SceneComponent.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "TreeFellers/Tree/ChoppableTree.h"
+#include "TreeFellers/Player/PlayerCharacter.h"
 
 AAxe::AAxe()
 {
@@ -17,6 +18,7 @@ AAxe::AAxe()
 	Mesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 	CollisionPoint = CreateDefaultSubobject<USceneComponent>(TEXT("Collision Point"));
 	CollisionPoint->SetupAttachment(Mesh);
+
 
 }
 
@@ -35,6 +37,7 @@ void AAxe::Tick(float DeltaTime)
 
 void AAxe::CalculateAxeCollision()
 {
+
 	if (!bHasHitThisSwing && HasAuthority())
 	{
 		//FVector SocketLocation = Mesh->GetSocketLocation(FName("CollisionSocket"));
@@ -54,6 +57,13 @@ void AAxe::CalculateAxeCollision()
 			{
 				Tree->AxeImpact(CollisionLocation, HitResult.ImpactNormal, this);
 			}
+
+			Player = Player? Player : Cast<APlayerCharacter>(GetOwner());
+			if (Player)
+			{
+				Player->AxeImpact();
+			}
+
 		}	
 	}
 	

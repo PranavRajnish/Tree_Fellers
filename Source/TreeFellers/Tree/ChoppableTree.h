@@ -124,7 +124,9 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Tree Split")
 	float SplitVertexRandomness = 10.f;
 	UPROPERTY(EditAnywhere, Category = "Tree Split")
-		float DownShiftOfVertices = 10.f;
+	float DownShiftOfVertices = 10.f;
+	UPROPERTY(EditAnywhere, Category = "Tree Split")
+	float DistanceFromImpactToBecomeStumpColor = 10.f;
 	
 
 public:	

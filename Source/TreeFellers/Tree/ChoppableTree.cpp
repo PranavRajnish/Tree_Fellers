@@ -375,112 +375,6 @@ void AChoppableTree::CalculateMeshThickness(FVector ImpactVertice)
 }
 
 
-void  AChoppableTree::SplitTree(FVector SplitPoint, FVector ZVector)
-{
-	//DrawDebugDirectionalArrow(GetWorld(), SplitPoint, SplitPoint + PlaneNormal * 50.f, 5.f, FColor::White, true);
-	FitPhysicsCapsuleToSplit(SplitPoint);
-
-	UKismetProceduralMeshLibrary::SliceProceduralMesh(TreeProcMesh, SplitPoint, ZVector, true, TreeStumpProcMesh,
-		EProcMeshSliceCapOption::CreateNewSectionForCap, TreeMaterial);
-	//UProceduralMeshComponent* temp;
-
-	/*UKismetProceduralMeshLibrary::SliceProceduralMesh(TreeStumpProcMesh, SplitPoint - FVector(0.f, 0.f, 10.f), -ZVector + FallDirection, false, 
-		temp, EProcMeshSliceCapOption::UseLastSectionForCap, TreeMaterial);*/
-
-	if (HasAuthority())
-	{
-		Capsule->SetSimulatePhysics(true);
-		Capsule->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-		Capsule->AddImpulse(FallDirection * FallImpulse, FName(NAME_None), false);
-
-		StumpCapsule->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-	}
-
-	float HeightOfCap;
-	bool bDoOnce = false;
-	// Moving Cap Vertices
-
-	FProcMeshSection* CapSection = TreeStumpProcMesh->GetProcMeshSection(1);
-	TArray<FVector> CapVertices;
-	TArray<FVector> CapNormals;
-	TArray<FVector2D> CapUV;
-	TArray<FColor> CapColors;
-	TArray<FProcMeshTangent> CapTangents;
-	TArray<FVector> NewCapVertices;
-	for (auto ver : CapSection->ProcVertexBuffer)
-	{
-		if (!bDoOnce)
-		{
-			HeightOfCap = ver.Position.Z;
-			bDoOnce = true;
-		}
-
-		CapVertices.Add(ver.Position);
-		if (FVector(ver.Position.X, ver.Position.Y, 0).Size() > MinDistanceFromCenterToBeAffectedByRandomOffset)
-		{
-			NewCapVertices.Add(FVector(ver.Position.X, ver.Position.Y, ver.Position.Z + FMath::FRandRange(-SplitVertexRandomness, SplitVertexRandomness) - DownShiftOfVertices));
-		}
-		else
-		{
-			NewCapVertices.Add(FVector(ver.Position.X, ver.Position.Y, ver.Position.Z - DownShiftOfVertices));
-		}
-		CapNormals.Add(ver.Normal);
-		CapUV.Add(ver.UV0);
-		CapColors.Add(ver.Color);
-		CapTangents.Add(ver.Tangent);
-		DrawDebugSphere(GetWorld(), GetActorLocation() + ver.Position, 0.5f, 4, FColor::Orange, true, 10.f);
-	}
-
-	TreeStumpProcMesh->UpdateMeshSection(1, NewCapVertices, CapNormals, CapUV, CapColors, CapTangents);
-
-	// Moving Stump Vertices if in path of Cap vertice.
-
-	FProcMeshSection*  StumpSection = TreeStumpProcMesh->GetProcMeshSection(0);
-	TArray<FVector> StumpVertices;
-	TArray<FVector> StumpNormals;
-	TArray<FVector2D> StumpUV;
-	TArray<FColor> StumpColors;
-	TArray<FProcMeshTangent> StumpTangents;
-	for (auto ver : StumpSection->ProcVertexBuffer)
-	{
-		//DrawDebugSphere(GetWorld(), GetActorLocation() + ver.Position, 0.5f, 4, FColor::Purple, true, 10.f);
-		bool bIsAlsoCapVertice = false;
-		for (int32 i = 0; i < CapVertices.Num(); i++)
-		{
-			// Determining if vertice lies on line between old and new positions of cap vertice.
-			float DistanceFromOrignial = FVector::Distance(CapVertices[i], ver.Position);
-			float DistanceToNew = FVector::Distance(NewCapVertices[i], ver.Position);
-			float TotalDistance = FVector::Distance(CapVertices[i], NewCapVertices[i]);
-			if (FMath::IsNearlyEqual(DistanceFromOrignial + DistanceToNew, TotalDistance))
-			{
-				StumpVertices.Add(NewCapVertices[i]);
-				UE_LOG(LogTemp, Warning, TEXT("Cap"));
-				bIsAlsoCapVertice = true;
-				break;
-			}
-		}
-		if (!bIsAlsoCapVertice)
-		{
-			if (ver.Position.Z > HeightOfCap - DownShiftOfVertices)
-			{
-				StumpVertices.Add(FVector(ver.Position.X, ver.Position.Y, HeightOfCap - DownShiftOfVertices));
-			}
-			else
-			{
-				StumpVertices.Add(ver.Position);
-			}
-		}
-		DrawDebugSphere(GetWorld(), GetActorLocation() + StumpVertices[StumpVertices.Num() - 1], 0.5f, 4, FColor::Purple, true, 10.f);
-		StumpNormals.Add(ver.Normal);
-		StumpUV.Add(ver.UV0);
-		StumpColors.Add(ver.Color);
-		StumpTangents.Add(ver.Tangent);
-		
-	}
-
-	TreeStumpProcMesh->UpdateMeshSection(0, StumpVertices, StumpNormals, StumpUV, StumpColors, StumpTangents);
-}
-
 void AChoppableTree::MulticastSplitTree_Implementation(FVector SplitPoint, FVector ZVector)
 {
 	//DrawDebugDirectionalArrow(GetWorld(), SplitPoint, SplitPoint + PlaneNormal * 50.f, 5.f, FColor::White, true);
@@ -488,10 +382,6 @@ void AChoppableTree::MulticastSplitTree_Implementation(FVector SplitPoint, FVect
 
 	UKismetProceduralMeshLibrary::SliceProceduralMesh(TreeProcMesh, SplitPoint, ZVector, true, TreeStumpProcMesh,
 		EProcMeshSliceCapOption::CreateNewSectionForCap, TreeMaterial);
-	//UProceduralMeshComponent* temp;
-
-	/*UKismetProceduralMeshLibrary::SliceProceduralMesh(TreeStumpProcMesh, SplitPoint - FVector(0.f, 0.f, 10.f), -ZVector + FallDirection, false,
-		temp, EProcMeshSliceCapOption::UseLastSectionForCap, TreeMaterial);*/
 
 	if (HasAuthority())
 	{
@@ -503,10 +393,95 @@ void AChoppableTree::MulticastSplitTree_Implementation(FVector SplitPoint, FVect
 	}
 	
 
+	//float HeightOfCap;
+	//bool bDoOnce = false;
+	//// Moving Cap Vertices
+
+	//FProcMeshSection* CapSection = TreeStumpProcMesh->GetProcMeshSection(1);
+	//TArray<FVector> CapVertices;
+	//TArray<FVector> CapNormals;
+	//TArray<FVector2D> CapUV;
+	//TArray<FColor> CapColors;
+	//TArray<FProcMeshTangent> CapTangents;
+	//TArray<FVector> NewCapVertices;
+	//for (auto ver : CapSection->ProcVertexBuffer)
+	//{
+	//	if (!bDoOnce)
+	//	{
+	//		HeightOfCap = ver.Position.Z;
+	//		bDoOnce = true;
+	//	}
+
+	//	CapVertices.Add(ver.Position);
+	//	if (FVector(ver.Position.X, ver.Position.Y, 0).Size() > MinDistanceFromCenterToBeAffectedByRandomOffset)
+	//	{
+	//		NewCapVertices.Add(FVector(ver.Position.X, ver.Position.Y, ver.Position.Z + FMath::FRandRange(-SplitVertexRandomness, SplitVertexRandomness) - DownShiftOfVertices));
+	//	}
+	//	else
+	//	{
+	//		NewCapVertices.Add(FVector(ver.Position.X, ver.Position.Y, ver.Position.Z - DownShiftOfVertices));
+	//	}
+
+	//	DrawDebugSphere(GetWorld(), GetActorLocation() + NewCapVertices[NewCapVertices.Num() - 1], 1.f, 4, FColor::Red, true, 10.f);
+	//	CapNormals.Add(ver.Normal);
+	//	CapUV.Add(ver.UV0);
+	//	CapColors.Add(ver.Color);
+	//	CapTangents.Add(ver.Tangent);
+	//	DrawDebugSphere(GetWorld(), GetActorLocation() + ver.Position, 0.5f, 4, FColor::Orange, true, 10.f);
+	//}
+
+	//TreeStumpProcMesh->UpdateMeshSection(1, NewCapVertices, CapNormals, CapUV, CapColors, CapTangents);
+
+	//// Moving Stump Vertices if in path of Cap vertice.
+
+	//FProcMeshSection* StumpSection = TreeStumpProcMesh->GetProcMeshSection(0);
+	//TArray<FVector> StumpVertices;
+	//TArray<FVector> StumpNormals;
+	//TArray<FVector2D> StumpUV;
+	//TArray<FColor> StumpColors;
+	//TArray<FProcMeshTangent> StumpTangents;
+	//for (auto ver : StumpSection->ProcVertexBuffer)
+	//{
+	//	//DrawDebugSphere(GetWorld(), GetActorLocation() + ver.Position, 0.5f, 4, FColor::Purple, true, 10.f);
+	//	bool bIsAlsoCapVertice = false;
+	//	
+	//	for (int32 i = 0; i < CapVertices.Num(); i++)
+	//	{
+	//		// Determining if vertice lies on line between old and new positions of cap vertice.
+	//		float DistanceFromOrignial = FMath::Abs(FVector::Distance(CapVertices[i], ver.Position));
+	//		float DistanceToNew = FMath::Abs(FVector::Distance(NewCapVertices[i], ver.Position));
+	//		float TotalDistance = FMath::Abs(FVector::Distance(CapVertices[i], NewCapVertices[i]));
+	//		UE_LOG(LogTemp, Warning, TEXT("%d, %d"), DistanceFromOrignial + DistanceToNew, TotalDistance);
+	//		if (FMath::IsNearlyEqual(DistanceFromOrignial + DistanceToNew, TotalDistance) || ver.Position.Equals(CapVertices[i]))
+	//		{
+	//			DrawDebugSphere(GetWorld(), GetActorLocation() + ver.Position, 1.f, 4, FColor::Cyan, true, 10.f);
+	//			UE_LOG(LogTemp, Warning, TEXT("Cap"));
+	//			StumpVertices.Add(NewCapVertices[i]);
+	//			bIsAlsoCapVertice = true;
+	//			break;
+	//		}
+	//	}
+	//	if (!bIsAlsoCapVertice)
+	//	{
+	//		if (ver.Position.Z > HeightOfCap - DownShiftOfVertices)
+	//		{
+	//			StumpVertices.Add(FVector(ver.Position.X, ver.Position.Y, HeightOfCap - DownShiftOfVertices));
+	//		}
+	//		else
+	//		{
+	//			StumpVertices.Add(ver.Position);
+	//		}
+	//	}
+	//	DrawDebugSphere(GetWorld(), GetActorLocation() + StumpVertices[StumpVertices.Num() - 1], 0.5f, 4, FColor::Purple, true, 10.f);
+	//	StumpNormals.Add(ver.Normal);
+	//	StumpUV.Add(ver.UV0);
+	//	StumpColors.Add(ver.Color);
+	//	StumpTangents.Add(ver.Tangent);
+
+	//}
+
 	float HeightOfCap;
 	bool bDoOnce = false;
-	// Moving Cap Vertices
-
 	FProcMeshSection* CapSection = TreeStumpProcMesh->GetProcMeshSection(1);
 	TArray<FVector> CapVertices;
 	TArray<FVector> CapNormals;
@@ -514,7 +489,7 @@ void AChoppableTree::MulticastSplitTree_Implementation(FVector SplitPoint, FVect
 	TArray<FColor> CapColors;
 	TArray<FProcMeshTangent> CapTangents;
 	TArray<FVector> NewCapVertices;
-	for (auto ver : CapSection->ProcVertexBuffer)
+	for (const auto &ver : CapSection->ProcVertexBuffer)
 	{
 		if (!bDoOnce)
 		{
@@ -523,14 +498,33 @@ void AChoppableTree::MulticastSplitTree_Implementation(FVector SplitPoint, FVect
 		}
 
 		CapVertices.Add(ver.Position);
-		if (FVector(ver.Position.X, ver.Position.Y, 0).Size() > MinDistanceFromCenterToBeAffectedByRandomOffset)
+		/*if (FVector(ver.Position.X, ver.Position.Y, 0).Size() > MinDistanceFromCenterToBeAffectedByRandomOffset)
 		{
 			NewCapVertices.Add(FVector(ver.Position.X, ver.Position.Y, ver.Position.Z + FMath::FRandRange(-SplitVertexRandomness, SplitVertexRandomness) - DownShiftOfVertices));
 		}
 		else
 		{
 			NewCapVertices.Add(FVector(ver.Position.X, ver.Position.Y, ver.Position.Z - DownShiftOfVertices));
+		}*/
+
+		FVector ImpactDirection = GetImpactDirectionForLocalPoint(ver.Position);
+
+		float DistanceToCenter = ImpactDirection.Size();
+		ImpactDirection.Normalize();
+
+		if (DistanceToCenter > MinDistanceFromCenter)
+		{
+			FVector BoundaryForCurrentVertice = FVector(0.f, 0.f, ver.Position.Z) + ((-ImpactDirection) * MinDistanceFromCenter);
+
+			NewCapVertices.Add(BoundaryForCurrentVertice);
+
 		}
+		else
+		{
+			NewCapVertices.Add(ver.Position);
+		}
+
+		DrawDebugSphere(GetWorld(), GetActorLocation() + NewCapVertices[NewCapVertices.Num() - 1], 1.f, 4, FColor::Red, true, 10.f);
 		CapNormals.Add(ver.Normal);
 		CapUV.Add(ver.UV0);
 		CapColors.Add(ver.Color);
@@ -540,49 +534,49 @@ void AChoppableTree::MulticastSplitTree_Implementation(FVector SplitPoint, FVect
 
 	TreeStumpProcMesh->UpdateMeshSection(1, NewCapVertices, CapNormals, CapUV, CapColors, CapTangents);
 
-	// Moving Stump Vertices if in path of Cap vertice.
-
 	FProcMeshSection* StumpSection = TreeStumpProcMesh->GetProcMeshSection(0);
 	TArray<FVector> StumpVertices;
 	TArray<FVector> StumpNormals;
 	TArray<FVector2D> StumpUV;
 	TArray<FColor> StumpColors;
 	TArray<FProcMeshTangent> StumpTangents;
-	for (auto ver : StumpSection->ProcVertexBuffer)
+	for (const auto &ver : StumpSection->ProcVertexBuffer)
 	{
 		//DrawDebugSphere(GetWorld(), GetActorLocation() + ver.Position, 0.5f, 4, FColor::Purple, true, 10.f);
 		bool bIsAlsoCapVertice = false;
+		bool bisAlsoStumpColor = false;
+
 		for (int32 i = 0; i < CapVertices.Num(); i++)
 		{
-			// Determining if vertice lies on line between old and new positions of cap vertice.
-			float DistanceFromOrignial = FVector::Distance(CapVertices[i], ver.Position);
-			float DistanceToNew = FVector::Distance(NewCapVertices[i], ver.Position);
-			float TotalDistance = FVector::Distance(CapVertices[i], NewCapVertices[i]);
-			if (FMath::IsNearlyEqual(DistanceFromOrignial + DistanceToNew, TotalDistance))
+			if ((ver.Position - CapVertices[i]).Size() < 0.5f)
 			{
+				DrawDebugSphere(GetWorld(), GetActorLocation() + ver.Position, 1.f, 4, FColor::Cyan, true, 10.f);
+				UE_LOG(LogTemp, Warning, TEXT("Cap Color: %s"), *ver.Color.ToString());
+
 				StumpVertices.Add(NewCapVertices[i]);
-				UE_LOG(LogTemp, Warning, TEXT("Cap"));
 				bIsAlsoCapVertice = true;
 				break;
 			}
+			//if ((ver.Position - CapVertices[i]).Size() < DistanceFromImpactToBecomeStumpColor)
+			//{
+			//	StumpColors.Add(FColor::Red);
+			//	bisAlsoStumpColor = true;
+			//	//DrawDebugSphere(GetWorld(), GetActorLocation() + ver.Position, 1.f, 4, FColor::Cyan, true, 10.f);
+			//	break;
+			//}
 		}
 		if (!bIsAlsoCapVertice)
 		{
-			if (ver.Position.Z > HeightOfCap - DownShiftOfVertices)
-			{
-				StumpVertices.Add(FVector(ver.Position.X, ver.Position.Y, HeightOfCap - DownShiftOfVertices));
-			}
-			else
-			{
-				StumpVertices.Add(ver.Position);
-			}
+			StumpVertices.Add(ver.Position);
 		}
 		DrawDebugSphere(GetWorld(), GetActorLocation() + StumpVertices[StumpVertices.Num() - 1], 0.5f, 4, FColor::Purple, true, 10.f);
 		StumpNormals.Add(ver.Normal);
-		StumpUV.Add(ver.UV0);
-		StumpColors.Add(ver.Color);
+		StumpUV.Add(ver.UV0);	
 		StumpTangents.Add(ver.Tangent);
-
+		if (!bisAlsoStumpColor)
+		{
+			StumpColors.Add(ver.Color);
+		}
 	}
 
 	TreeStumpProcMesh->UpdateMeshSection(0, StumpVertices, StumpNormals, StumpUV, StumpColors, StumpTangents);

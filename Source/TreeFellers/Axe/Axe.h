@@ -27,6 +27,9 @@ private:
 	UPROPERTY(VisibleAnywhere)
 	class USceneComponent* CollisionPoint;
 
+	UPROPERTY(VisibleAnywhere)
+	class APlayerCharacter* Player;
+
 	UPROPERTY(EditAnywhere, Category = "Defaults")
 	float CollisionRadius = 20.f;
 	UPROPERTY(EditAnywhere, Category = "Defaults")
