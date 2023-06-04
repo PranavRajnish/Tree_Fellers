@@ -47,10 +47,13 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Defaults")
 	class UCapsuleComponent* Capsule;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Defaults")
-	 UCapsuleComponent* StumpCapsule;
+	UCapsuleComponent* StumpCapsule;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Defaults")
 	class USplineComponent* CenterSpline;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Defaults")
+	class UBoxComponent* GroundCollider;
 
 	UPROPERTY()
 	TArray<FVector> Vertices;
@@ -93,14 +96,17 @@ protected:
 
 private:
 
-
-
 	void CalculateMeshThickness(FVector ImpactPoint);
 	FVector GetClosestPointOnCenterSpline(FVector Point);
 	FVector GetImpactDirectionForLocalPoint(FVector LocalPoint);
 
 	UPROPERTY(EditAnywhere)
 	class UMaterialInterface* TreeMaterial;
+
+	UPROPERTY(EditAnywhere, Category = "Impact")
+	class UNiagaraSystem* TreeImpactVFX;
+	UPROPERTY(EditAnywhere, Category = "Impact")
+	class USoundCue* TreeImpactSFX;
 
 	// Calculating Thickness of Trunk
 	UPROPERTY(EditAnywhere, Category = "Thickness")
@@ -113,6 +119,10 @@ private:
 	float ThicknessTraceSpread = 5.f;
 
 	// Tree Split Properties
+	UPROPERTY(EditAnywhere, Category = "Tree Split")
+	USoundCue* TreeFallingSFX;
+	UPROPERTY(EditAnywhere, Category = "Tree Split")
+	USoundCue* TreeGroundImpactSFX;
 	UPROPERTY(VisibleAnywhere, Replicated, Category = "Tree Split")
 	FVector FallDirection;
 	UPROPERTY()
@@ -128,6 +138,12 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Tree Split")
 	float DistanceFromImpactToBecomeStumpColor = 10.f;
 	
+	FTimerHandle TreeFallingSFXDelayHandle;
+	float TreeFallingSFXDelay = 1.0f;
+	UFUNCTION()
+	void OnGroundOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
+	UFUNCTION()
+	void PlayTreeFallingSFX();
 
 public:	
 

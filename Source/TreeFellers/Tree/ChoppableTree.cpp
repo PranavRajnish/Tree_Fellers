@@ -7,10 +7,15 @@
 #include "DrawDebugHelpers.h"
 #include "Kismet/KismetSystemLibrary.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Kismet/GameplayStatics.h"
 #include "TreeFellers/Axe/Axe.h"
 #include "Components/CapsuleComponent.h"
+#include "Components/BoxComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "Components/SplineComponent.h"
+#include "NiagaraFunctionLibrary.h"
+#include "NiagaraComponent.h"
+#include "Sound/SoundCue.h"
 
 AChoppableTree::AChoppableTree()
 {
@@ -51,6 +56,12 @@ AChoppableTree::AChoppableTree()
 
 	TreeStumpProcMesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("StumpProceduralMesh"));
 	TreeStumpProcMesh->SetupAttachment(StumpCapsule);
+
+	GroundCollider = CreateDefaultSubobject<UBoxComponent>(TEXT("GroundCollider"));
+	GroundCollider->SetupAttachment(Capsule);
+	GroundCollider->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+	GroundCollider->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel2, ECollisionResponse::ECR_Overlap);
+	GroundCollider->OnComponentBeginOverlap.AddDynamic(this, &ThisClass::OnGroundOverlap);
 
 	//Tangents = TArray<FProcMeshTangent>();
 }
@@ -239,6 +250,7 @@ void AChoppableTree::AxeImpact(FVector ImpactLocation, FVector ImpactNormal, AAx
 void AChoppableTree::MulticastCalculateAxeImpact_Implementation(FVector ImpactLocation, float ImpactRadius, float ImpactDepth)
 {
 	FVector ClosestVertex = GetActorLocation() + Vertices[0];
+
 	for (int32 i = 0; i < Vertices.Num(); i++)
 	{
 		FVector GlobalVertexPosition = GetActorLocation() + Vertices[i];
@@ -248,18 +260,31 @@ void AChoppableTree::MulticastCalculateAxeImpact_Implementation(FVector ImpactLo
 		}
 	}
 
+	// Playing Impact Effects
+	FVector ImpactDirection = GetImpactDirectionForLocalPoint(ClosestVertex - GetActorLocation());
+	ImpactDirection.Normalize();
+	if (TreeImpactVFX)
+	{
+		UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, TreeImpactVFX, ImpactLocation + (ImpactDirection) * ImpactDepth, (-ImpactDirection).ToOrientationRotator());
+	}
+	if (TreeImpactSFX)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, TreeImpactSFX, ImpactLocation);
+	}
+
 	for (int32 i = 0; i < Vertices.Num(); i++)
 	{
 		float DistanceToImpactVertex = (ClosestVertex - (Vertices[i] + GetActorLocation())).Size();
 
-		FVector ImpactDirection = GetImpactDirectionForLocalPoint(Vertices[i]);
+		ImpactDirection = GetImpactDirectionForLocalPoint(Vertices[i]);
 
 		/*UE_LOG(LogTemp, Warning, TEXT("Old Impact Direction: %s"), *ImpactDirection2.ToString());
 		UE_LOG(LogTemp, Warning, TEXT("New Impact Direction: %s"), *ImpactDirection.ToString());*/
 
 		float DistanceToCenter = ImpactDirection.Size();
 		ImpactDirection.Normalize();
-		
+
+		// Calculating which vertices to move
 		if (DistanceToImpactVertex < ImpactRadius && DistanceToCenter > MinDistanceFromCenter)
 		{
 			//UE_LOG(LogTemp, Warning, TEXT("Before Shift: %s"), *Vertices[i].ToString());
@@ -551,7 +576,7 @@ void AChoppableTree::MulticastSplitTree_Implementation(FVector SplitPoint, FVect
 			if ((ver.Position - CapVertices[i]).Size() < 0.5f)
 			{
 				DrawDebugSphere(GetWorld(), GetActorLocation() + ver.Position, 1.f, 4, FColor::Cyan, true, 10.f);
-				UE_LOG(LogTemp, Warning, TEXT("Cap Color: %s"), *ver.Color.ToString());
+				//UE_LOG(LogTemp, Warning, TEXT("Cap Color: %s"), *ver.Color.ToString());
 
 				StumpVertices.Add(NewCapVertices[i]);
 				bIsAlsoCapVertice = true;
@@ -580,6 +605,9 @@ void AChoppableTree::MulticastSplitTree_Implementation(FVector SplitPoint, FVect
 	}
 
 	TreeStumpProcMesh->UpdateMeshSection(0, StumpVertices, StumpNormals, StumpUV, StumpColors, StumpTangents);
+
+	//GetWorld()->GetTimerManager().SetTimer(TreeFallingSFXDelayHandle, this, &ThisClass::PlayTreeFallingSFX, TreeFallingSFXDelay);
+	PlayTreeFallingSFX();
 }
 
 void AChoppableTree::FitPhysicsCapsuleToSplit(FVector SplitPoint)
@@ -621,3 +649,16 @@ FVector AChoppableTree::GetImpactDirectionForLocalPoint(FVector LocalPoint)
 	return FVector(ClosestCenterPoint.X - (GetActorLocation() + LocalPoint).X, 
 		ClosestCenterPoint.Y - (GetActorLocation() + LocalPoint).Y, 0.f);
 }
+
+// When the tree hits the ground after splitting
+void AChoppableTree::OnGroundOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	UE_LOG(LogTemp, Warning, TEXT("Hit Ground"));
+	UGameplayStatics::PlaySoundAtLocation(this, TreeGroundImpactSFX, SweepResult.ImpactPoint);
+}
+
+void AChoppableTree::PlayTreeFallingSFX()
+{
+	UGameplayStatics::PlaySoundAtLocation(this, TreeFallingSFX, GetActorLocation());
+}
+
