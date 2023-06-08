@@ -16,6 +16,7 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 	void CalculateAxeCollision();
+	void PlaySwingSound();
 
 
 protected:
@@ -29,6 +30,9 @@ private:
 
 	UPROPERTY(VisibleAnywhere)
 	class APlayerCharacter* Player;
+
+	UPROPERTY(EditAnywhere)
+	class USoundCue* WeaponSwingSFX;
 
 	UPROPERTY(EditAnywhere, Category = "Defaults")
 	float CollisionRadius = 20.f;

@@ -5,8 +5,10 @@
 #include "Components/StaticMeshComponent.h"
 #include "Components/SceneComponent.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Kismet/GameplayStatics.h"
 #include "TreeFellers/Tree/ChoppableTree.h"
 #include "TreeFellers/Player/PlayerCharacter.h"
+#include "Sound/SoundCue.h"
 
 AAxe::AAxe()
 {
@@ -18,7 +20,6 @@ AAxe::AAxe()
 	Mesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 	CollisionPoint = CreateDefaultSubobject<USceneComponent>(TEXT("Collision Point"));
 	CollisionPoint->SetupAttachment(Mesh);
-
 
 }
 
@@ -68,3 +69,12 @@ void AAxe::CalculateAxeCollision()
 	}
 	
 }
+
+void AAxe::PlaySwingSound()
+{
+	if (!WeaponSwingSFX) return;
+
+	UGameplayStatics::PlaySoundAtLocation(this, WeaponSwingSFX, GetActorLocation());
+}
+
+

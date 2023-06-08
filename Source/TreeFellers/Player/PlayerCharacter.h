@@ -35,6 +35,9 @@ private:
 	UPROPERTY(VisibleAnywhere)
 	AAxe* Axe;
 
+	UPROPERTY(VisibleAnywhere)
+	APlayerController* PlayerController;
+
 	// Animation
 	UPROPERTY(EditAnywhere, Category = Animation)
 	class UAnimMontage* AxeSwing;
@@ -56,6 +59,9 @@ private:
 	void MulticastSwingAxe();
 
 	bool bCalculateAttackCollision = false;
+
+	UPROPERTY(EditAnywhere, Category = "Camera")
+	TSubclassOf<class UCameraShakeBase> SwingCameraShake;
 
 
 public:	

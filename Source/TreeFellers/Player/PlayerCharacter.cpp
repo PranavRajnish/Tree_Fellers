@@ -6,6 +6,10 @@
 #include "TreeFellers/Axe/Axe.h"
 #include "Animation/AnimMontage.h"
 #include "Net/UnrealNetwork.h"
+#include "Kismet/GameplayStatics.h"
+#include "Camera/PlayerCameraManager.h"
+#include "Camera/CameraShakeBase.h"
+
 APlayerCharacter::APlayerCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
@@ -34,6 +38,8 @@ void APlayerCharacter::BeginPlay()
 		Axe->SetOwner(this);
 		Axe->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("RightHandSocket"));
 	}
+
+	PlayerController = Cast<APlayerController>(Controller);
 }
 
 void APlayerCharacter::Tick(float DeltaTime)
@@ -108,11 +114,22 @@ void APlayerCharacter::AttackButtonPressed()
 	{
 		if (!HasAuthority())
 		{
-			PlayAnimMontage(AxeSwing);
+			PlayAnimMontage(AxeSwing);	
+			
+			if (Axe)
+			{
+				Axe->PlaySwingSound();
+			}
+			if (SwingCameraShake && PlayerController)
+			{
+				
+				PlayerController->PlayerCameraManager->StartCameraShake(SwingCameraShake);
+			}
 		}
 
 		bIsSwingingAxe = true;
 		ServerSwingAxe();
+		
 	}
 }
 
@@ -121,7 +138,19 @@ void APlayerCharacter::AttackButtonPressed()
 
 void APlayerCharacter::ServerSwingAxe_Implementation()
 {
-	PlayAnimMontage(AxeSwing);
+	if (IsLocallyControlled())
+	{
+		PlayAnimMontage(AxeSwing);
+
+		if (Axe)
+		{
+			Axe->PlaySwingSound();
+		}
+		if (SwingCameraShake && PlayerController)
+		{
+			//PlayerController->PlayerCameraManager->StartCameraShake(SwingCameraShake);
+		}
+	}
 
 	MulticastSwingAxe();
 }
@@ -131,6 +160,11 @@ void APlayerCharacter::MulticastSwingAxe_Implementation()
 	if (!IsLocallyControlled())
 	{
 		PlayAnimMontage(AxeSwing);
+
+		if (Axe)
+		{
+			Axe->PlaySwingSound();
+		}
 	}
 }
 
@@ -154,4 +188,9 @@ void APlayerCharacter::AxeImpact()
 	StopAnimMontage(AxeSwing);
 	StopCalculateAttackCollision();
 	SetIsSwingingAxe(false);
+
+	if (SwingCameraShake && PlayerController)
+	{
+		PlayerController->PlayerCameraManager->StartCameraShake(SwingCameraShake);
+	}
 }

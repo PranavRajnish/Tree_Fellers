@@ -11,11 +11,13 @@
 #include "TreeFellers/Axe/Axe.h"
 #include "Components/CapsuleComponent.h"
 #include "Components/BoxComponent.h"
+#include "Components/AudioComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "Components/SplineComponent.h"
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraComponent.h"
 #include "Sound/SoundCue.h"
+
 
 AChoppableTree::AChoppableTree()
 {
@@ -63,6 +65,9 @@ AChoppableTree::AChoppableTree()
 	GroundCollider->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel2, ECollisionResponse::ECR_Overlap);
 	GroundCollider->OnComponentBeginOverlap.AddDynamic(this, &ThisClass::OnGroundOverlap);
 
+	AudioComponent = CreateDefaultSubobject<UAudioComponent>(TEXT("Audio Component"));
+	AudioComponent->SetupAttachment(RootComponent);
+
 	//Tangents = TArray<FProcMeshTangent>();
 }
 
@@ -87,24 +92,16 @@ void AChoppableTree::BeginPlay()
 		TreeProcMesh->UpdateMeshSection(0, Vertices, Normals, UV0, UpVertexColors, Tangents);
 		TreeProcMesh->SetMaterial(0, TreeMaterial);
 	}
+	if (TreeFallingSFX)
+	{
+		AudioComponent->SetSound(TreeFallingSFX);
+	}
 
 }
 
 void AChoppableTree::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
-	/*DrawDebugCylinder(GetWorld(), GetActorLocation(), GetActorLocation() + FVector(0.f, 0.f, 400.f), 
-		MinDistanceFromCenter, 16, FColor::Orange, false, 0.1f);*/
-	DrawDebugDirectionalArrow(GetWorld(), GetActorLocation() + FVector(0.f, 0.f, 200.f),
-		(GetActorLocation() + FVector(0.f, 0.f, 200.f)) + FallDirection * 200.f, 20.f, FColor::Cyan, false, 0.1f, (uint8)0U, 5.f);
-
-	/*if (Capsule)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Capsule component location: %s"), *Capsule->GetComponentLocation().ToString());
-		UE_LOG(LogTemp, Warning, TEXT("Capsule relative location: %s"), *Capsule->GetRelativeLocation().ToString());
-		UE_LOG(LogTemp, Warning, TEXT("Capsule height: %f"), Capsule->GetScaledCapsuleHalfHeight());
-	}*/
 
 }
 
@@ -654,11 +651,17 @@ FVector AChoppableTree::GetImpactDirectionForLocalPoint(FVector LocalPoint)
 void AChoppableTree::OnGroundOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
 	UE_LOG(LogTemp, Warning, TEXT("Hit Ground"));
+	
+	if (AudioComponent->IsPlaying())
+	{
+		AudioComponent->Stop();
+	}
 	UGameplayStatics::PlaySoundAtLocation(this, TreeGroundImpactSFX, SweepResult.ImpactPoint);
 }
 
 void AChoppableTree::PlayTreeFallingSFX()
 {
-	UGameplayStatics::PlaySoundAtLocation(this, TreeFallingSFX, GetActorLocation());
+	AudioComponent->Play();
+	//UGameplayStatics::PlaySoundAtLocation(this, TreeFallingSFX, GetActorLocation());
 }
 

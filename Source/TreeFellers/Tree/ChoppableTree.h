@@ -55,6 +55,9 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Defaults")
 	class UBoxComponent* GroundCollider;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Defaults")
+	class UAudioComponent* AudioComponent;
+
 	UPROPERTY()
 	TArray<FVector> Vertices;
 
@@ -121,8 +124,10 @@ private:
 	// Tree Split Properties
 	UPROPERTY(EditAnywhere, Category = "Tree Split")
 	USoundCue* TreeFallingSFX;
+
 	UPROPERTY(EditAnywhere, Category = "Tree Split")
 	USoundCue* TreeGroundImpactSFX;
+
 	UPROPERTY(VisibleAnywhere, Replicated, Category = "Tree Split")
 	FVector FallDirection;
 	UPROPERTY()
