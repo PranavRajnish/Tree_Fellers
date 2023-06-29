@@ -2,6 +2,7 @@
 #include "ProceduralMeshComponent.h"
 #include "DrawDebugHelpers.h"
 #include "KismetProceduralMeshLibrary.h"
+#include "ProceduralTreeGenerator.h"
 
 // Sets default values
 AProceduralGround::AProceduralGround()
@@ -11,6 +12,9 @@ AProceduralGround::AProceduralGround()
 
 	ProceduralMesh = CreateDefaultSubobject<UProceduralMeshComponent>("ProceduralMesh");
 	ProceduralMesh->SetupAttachment(RootComponent);
+	ProceduralTreeGenerator = CreateDefaultSubobject<UProceduralTreeGenerator>("TreeSpawner");
+	AddOwnedComponent(ProceduralTreeGenerator);
+
 
 }
 
@@ -19,12 +23,15 @@ void AProceduralGround::BeginPlay()
 {
 	Super::BeginPlay();
 	
-
+	UE_LOG(LogTemp, Warning, TEXT("Actor Begin Play"));
 }
 
 void AProceduralGround::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
+
+	UE_LOG(LogTemp, Warning, TEXT("Actor Construction"));
+	MeshSize = FVector2D(XSize * Scale, YSize * Scale);
 
 	//DrawDebugBox(GetWorld(), Transform.GetLocation() + FVector(XSize * Scale / 2, YSize * Scale / 2, 0), FVector(XSize * Scale / 2, YSize * Scale / 2, 100.0f), FColor::Blue, true, -1.0f, 0U, 10.f);
 	UE_LOG(LogTemp, Log, TEXT("Constructing Ground.."));
@@ -39,6 +46,8 @@ void AProceduralGround::OnConstruction(const FTransform& Transform)
 	UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, UV0, Normals, Tangents);
 	ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, TArray<FColor>(), Tangents, true);
 	ProceduralMesh->SetMaterial(0, GroundMaterial);
+	ProceduralMesh->SetCollisionObjectType(ECollisionChannel::ECC_GameTraceChannel2);
+
 }
 
 // Called every frame
@@ -54,7 +63,7 @@ void AProceduralGround::CreateVertices()
 	{
 		for (int32 Y = 0; Y <= YSize; Y++)
 		{
-			float Z = FMath::PerlinNoise2D(FVector2D(X * NoiseScale + 0.1, Y * NoiseScale + 0.1)) * ZMultiplier;
+			float Z = FMath::PerlinNoise2D(FVector2D(X * NoiseScale + 0.1 + NoiseShiftX, Y * NoiseScale + 0.1 + NoiseShiftY)) * ZMultiplier;
 			Vertices.Add(FVector(X * Scale, Y  * Scale, Z));
 			UV0.Add(FVector2D(X * UVScale, Y * UVScale));
 

@@ -9,6 +9,7 @@
 #include "ProceduralGround.generated.h"
 
 class UMaterialInterface;
+class UProceduralTreeGenerator;
 
 UCLASS()
 class TREEFELLERS_API AProceduralGround : public AActor
@@ -27,6 +28,11 @@ public:
 	float ZMultiplier = 1.0f;
 	UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
 	float NoiseScale = 1.0f;
+
+	UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
+	int NoiseShiftX = 0;
+	UPROPERTY(EditAnywhere, Meta = (ClampMin = 0))
+	int NoiseShiftY = 0;
 	UPROPERTY(EditAnywhere, Meta = (ClampMin = 0.00001))
 	int Scale = 1;
 	UPROPERTY(EditAnywhere, Meta = (ClampMin = 0.00001))
@@ -39,6 +45,8 @@ protected:
 
 	UPROPERTY(EditAnywhere)
 	UMaterialInterface* GroundMaterial;
+	UPROPERTY(EditAnywhere)
+	UProceduralTreeGenerator* ProceduralTreeGenerator;
 
 private:
 	UProceduralMeshComponent* ProceduralMesh;
@@ -51,4 +59,10 @@ private:
 
 	void CreateVertices();
 	void CreateTriangles();
+	UPROPERTY(VisibleAnywhere)
+	FVector2D MeshSize;
+
+public:
+	FORCEINLINE FVector2D GetMeshSize() const { return MeshSize; }
+	FORCEINLINE float GetZMultiplier() const { return ZMultiplier; }
 };
