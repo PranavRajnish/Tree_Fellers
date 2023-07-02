@@ -11,6 +11,7 @@
 class UMaterialInterface;
 class UProceduralTreeGenerator;
 
+
 UCLASS()
 class TREEFELLERS_API AProceduralGround : public AActor
 {
@@ -48,10 +49,15 @@ protected:
 	UPROPERTY(EditAnywhere)
 	UProceduralTreeGenerator* ProceduralTreeGenerator;
 
+#if WITH_EDITOR
+	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
+	virtual void PostInitProperties() override;
+#endif
+
 private:
+	UPROPERTY(EditAnywhere)
 	UProceduralMeshComponent* ProceduralMesh;
 	TArray<FVector> Vertices;
-
 	TArray<int32> Triangles;
 	TArray<FVector2D> UV0;
 	TArray<FVector> Normals;
@@ -59,8 +65,13 @@ private:
 
 	void CreateVertices();
 	void CreateTriangles();
+	void ConstructGround();
+
 	UPROPERTY(VisibleAnywhere)
 	FVector2D MeshSize;
+
+	// Property names that will affect construction of BP
+	static const TArray<FName> ReconstructPropertyNames;
 
 public:
 	FORCEINLINE FVector2D GetMeshSize() const { return MeshSize; }

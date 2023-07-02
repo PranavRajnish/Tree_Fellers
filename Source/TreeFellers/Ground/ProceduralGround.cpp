@@ -4,17 +4,23 @@
 #include "KismetProceduralMeshLibrary.h"
 #include "ProceduralTreeGenerator.h"
 
+const TArray<FName> AProceduralGround::ReconstructPropertyNames = {FName(TEXT("XSize")), FName(TEXT("YSize")), FName(TEXT("ZMultiplier")), FName(TEXT("NoiseScale")), FName(TEXT("NoiseShiftX")) , 
+FName(TEXT("NoiseShiftY")), FName(TEXT("Scale")), FName(TEXT("UVScale"))};
+
 // Sets default values
 AProceduralGround::AProceduralGround()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = false;
 
+	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootComponent"));
+
 	ProceduralMesh = CreateDefaultSubobject<UProceduralMeshComponent>("ProceduralMesh");
 	ProceduralMesh->SetupAttachment(RootComponent);
+	ProceduralMesh->SetCollisionObjectType(ECollisionChannel::ECC_GameTraceChannel2);
+
 	ProceduralTreeGenerator = CreateDefaultSubobject<UProceduralTreeGenerator>("TreeSpawner");
 	AddOwnedComponent(ProceduralTreeGenerator);
-
 
 }
 
@@ -24,17 +30,71 @@ void AProceduralGround::BeginPlay()
 	Super::BeginPlay();
 	
 	UE_LOG(LogTemp, Warning, TEXT("Actor Begin Play"));
+
+	ConstructGround();
+
+	ProceduralTreeGenerator->SetGround(this);
 }
 
 void AProceduralGround::OnConstruction(const FTransform& Transform)
 {
 	Super::OnConstruction(Transform);
 
-	UE_LOG(LogTemp, Warning, TEXT("Actor Construction"));
+	UE_LOG(LogTemp, Log, TEXT("On Construction"));
 	MeshSize = FVector2D(XSize * Scale, YSize * Scale);
-
 	//DrawDebugBox(GetWorld(), Transform.GetLocation() + FVector(XSize * Scale / 2, YSize * Scale / 2, 0), FVector(XSize * Scale / 2, YSize * Scale / 2, 100.0f), FColor::Blue, true, -1.0f, 0U, 10.f);
-	UE_LOG(LogTemp, Log, TEXT("Constructing Ground.."));
+	
+	
+}
+
+#if WITH_EDITOR
+
+void AProceduralGround::PostInitProperties()
+{
+	Super::PostInitProperties();
+
+	ConstructGround();
+
+	/*if (ProceduralTreeGenerator)
+	{
+		UE_LOG(LogTemp, Log, TEXT("Tree Spawner in PostInitProperties"));
+		ProceduralTreeGenerator->SetGround(this);
+	}
+	else
+	{
+		UE_LOG(LogTemp, Log, TEXT("No Tree Spawner in PostInitProperties"));
+	}*/
+
+}
+
+void AProceduralGround::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
+{
+	UE_LOG(LogTemp, Warning, TEXT("Change of : %s"), *PropertyChangedEvent.GetPropertyName().ToString());
+	if (ReconstructPropertyNames.Contains(PropertyChangedEvent.GetPropertyName()))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Property Changed in Ground Generation"));
+		MeshSize = FVector2D(XSize * Scale, YSize * Scale);
+		ConstructGround();
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Property Changed"));
+	}
+
+	Super::PostEditChangeProperty(PropertyChangedEvent);
+}
+
+#endif
+
+// Called every frame
+void AProceduralGround::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+
+}
+
+void AProceduralGround::ConstructGround()
+{
 	ProceduralMesh->ClearMeshSection(0);
 	Vertices.Empty();
 	Triangles.Empty();
@@ -46,15 +106,6 @@ void AProceduralGround::OnConstruction(const FTransform& Transform)
 	UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, UV0, Normals, Tangents);
 	ProceduralMesh->CreateMeshSection(0, Vertices, Triangles, Normals, UV0, TArray<FColor>(), Tangents, true);
 	ProceduralMesh->SetMaterial(0, GroundMaterial);
-	ProceduralMesh->SetCollisionObjectType(ECollisionChannel::ECC_GameTraceChannel2);
-
-}
-
-// Called every frame
-void AProceduralGround::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-
 }
 
 void AProceduralGround::CreateVertices()

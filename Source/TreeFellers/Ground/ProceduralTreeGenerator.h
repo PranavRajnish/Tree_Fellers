@@ -25,15 +25,18 @@ protected:
 	virtual void BeginPlay() override;
 
 	UPROPERTY()
-	AProceduralGround* Ground;
+	AProceduralGround* Ground = nullptr;
 	UPROPERTY(EditAnywhere, Meta = (ClampMin = 1.0f))
 	float GridCellSize = 2000.f;
 	UPROPERTY(EditAnywhere, Meta = (ClampMin = 0.0f, ClampMax = 1.0f))
 	float TreeDensity = 1.0f;
 	UPROPERTY(EditAnywhere)
-	TArray<TSubclassOf<AChoppableTree>> TreeClasses;
+	TArray<TSubclassOf<AActor>> TreeClasses;
 	UPROPERTY(EditAnywhere)
 	float TreeRadius = 500.f;
+
+	UFUNCTION(CallInEditor)
+	void GenerateTrees();
 
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;
@@ -51,9 +54,18 @@ private:
 	void DisplayGrid();
 	void CalculateTreeCells();
 	void SpawnTrees();
+	void ClearTrees();
 	FVector2D GetRandomValidTreePositionInCell(TSharedPtr<FGroundTile> Cell);
 
+	UPROPERTY(VisibleAnywhere)
 	int32 TreeMax;
+	UPROPERTY(VisibleAnywhere)
 	int32 NumberOfTrees;
+
+	UPROPERTY()
+	TArray<AActor*> SpawnedTrees;
+
+public:
+	FORCEINLINE void SetGround(AProceduralGround* NewGround) { UE_LOG(LogTemp, Warning, TEXT("Ground Set")); Ground = NewGround; }
 	
 };
