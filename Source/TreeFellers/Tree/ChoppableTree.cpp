@@ -246,20 +246,28 @@ void AChoppableTree::AxeImpact(FVector ImpactLocation, FVector ImpactNormal, AAx
 // Deforms Tree Mesh based on Axe Impact.
 void AChoppableTree::MulticastCalculateAxeImpact_Implementation(FVector ImpactLocation, float ImpactRadius, float ImpactDepth)
 {
-	FVector ClosestVertex = GetActorLocation() + Vertices[0];
+	if (Vertices.Num() <= 0)
+		return;
+
+	FTransform ActorTransform = GetActorTransform();
+	FTransform InverseActorTransform = ActorTransform.Inverse();
+	FVector ClosestVertex = GetActorLocation() + ActorTransform.TransformVector(Vertices[0]);
 
 	for (int32 i = 0; i < Vertices.Num(); i++)
 	{
-		FVector GlobalVertexPosition = GetActorLocation() + Vertices[i];
+		FVector GlobalVertexPosition = GetActorLocation() + ActorTransform.TransformVector(Vertices[i]);
 		if ((GlobalVertexPosition - ImpactLocation).Size() < (ClosestVertex - ImpactLocation).Size())
 		{
 			ClosestVertex = GlobalVertexPosition;
 		}
+		//DrawDebugSphere(GetWorld(), GlobalVertexPosition, 1.f, 12, FColor::Red, false, 20.f);
 	}
 
-	// Playing Impact Effects
+	//DrawDebugSphere(GetWorld(), ClosestVertex, 1.f, 12, FColor::Red, false, 20.f);
 	FVector ImpactDirection = GetImpactDirectionForLocalPoint(ClosestVertex - GetActorLocation());
 	ImpactDirection.Normalize();
+
+	// Playing Impact Effects
 	if (TreeImpactVFX)
 	{
 		UNiagaraFunctionLibrary::SpawnSystemAtLocation(this, TreeImpactVFX, ImpactLocation + (ImpactDirection) * ImpactDepth, (-ImpactDirection).ToOrientationRotator());
@@ -271,35 +279,36 @@ void AChoppableTree::MulticastCalculateAxeImpact_Implementation(FVector ImpactLo
 
 	for (int32 i = 0; i < Vertices.Num(); i++)
 	{
-		float DistanceToImpactVertex = (ClosestVertex - (Vertices[i] + GetActorLocation())).Size();
+		FVector LocalVertex = ActorTransform.TransformVector(Vertices[i]);
+		float DistanceToImpactVertex = (ClosestVertex - (LocalVertex + GetActorLocation())).Size();
 
-		ImpactDirection = GetImpactDirectionForLocalPoint(Vertices[i]);
-
-		/*UE_LOG(LogTemp, Warning, TEXT("Old Impact Direction: %s"), *ImpactDirection2.ToString());
-		UE_LOG(LogTemp, Warning, TEXT("New Impact Direction: %s"), *ImpactDirection.ToString());*/
-
-		float DistanceToCenter = ImpactDirection.Size();
-		ImpactDirection.Normalize();
 
 		// Calculating which vertices to move
-		if (DistanceToImpactVertex < ImpactRadius && DistanceToCenter > MinDistanceFromCenter)
+		if (DistanceToImpactVertex < ImpactRadius)
 		{
-			//UE_LOG(LogTemp, Warning, TEXT("Before Shift: %s"), *Vertices[i].ToString());
-			UpVertexColors[i] = FColor::Red;
-			float VertexShift = FMath::Lerp(ImpactDepth, 0.f, DistanceToImpactVertex / ImpactRadius);
+			ImpactDirection = GetImpactDirectionForLocalPoint(LocalVertex);
 
-			FVector TempShift = Vertices[i] + (ImpactDirection * VertexShift);
-			FVector BoundaryForCurrentVertice = FVector(0.f, 0.f, Vertices[i].Z) + ((-ImpactDirection) * MinDistanceFromCenter);
-			FVector VectorToBoundary = BoundaryForCurrentVertice - Vertices[i];
-			if ((ImpactDirection * VertexShift).Size() > VectorToBoundary.Size())
+			//DrawDebugDirectionalArrow(GetWorld(), LocalVertex + GetActorLocation(), LocalVertex + GetActorLocation() + ImpactDirection, 2.0, FColor::Orange, false, 20.f);
+			float DistanceToCenter = ImpactDirection.Size();
+			ImpactDirection.Normalize();
+
+			if (DistanceToCenter > MinDistanceFromCenter)
 			{
-				Vertices[i] = BoundaryForCurrentVertice;
+				UpVertexColors[i] = FColor::Red;
+				float VertexShift = FMath::Lerp(ImpactDepth, 0.f, FMath::Clamp(DistanceToImpactVertex / ImpactRadius, 0.f, 1.f));
+
+				FVector TempShift = LocalVertex + (ImpactDirection * VertexShift);
+				FVector BoundaryForCurrentVertice = (LocalVertex + (ImpactDirection * DistanceToCenter)) + ((-ImpactDirection) * MinDistanceFromCenter);
+				FVector VectorToBoundary = BoundaryForCurrentVertice - LocalVertex;
+				if ((ImpactDirection * VertexShift).Size() > VectorToBoundary.Size())
+				{
+					Vertices[i] = InverseActorTransform.TransformVector(BoundaryForCurrentVertice);
+				}
+				else
+				{
+					Vertices[i] = InverseActorTransform.TransformVector(TempShift);
+				}
 			}
-			else
-			{
-				Vertices[i] = TempShift;
-			}
-			//UE_LOG(LogTemp, Warning, TEXT("After Shift: %s"), *Vertices[i].ToString());
 		}
 	}
 
@@ -308,11 +317,11 @@ void AChoppableTree::MulticastCalculateAxeImpact_Implementation(FVector ImpactLo
 
 	if (HasAuthority())
 	{
-		CalculateMeshThickness(ClosestVertex);
+		CalculateMeshThickness(ClosestVertex, ImpactDirection);
 	}
 }
 
-void AChoppableTree::CalculateMeshThickness(FVector ImpactVertice)
+void AChoppableTree::CalculateMeshThickness(FVector ImpactVertice, FVector ImpactDirection)
 {
 	float TotalThicknessOfTraces = 0.f;
 	float TotalDistanceFromCenterOfTraces = 0.f;
@@ -332,10 +341,11 @@ void AChoppableTree::CalculateMeshThickness(FVector ImpactVertice)
 			TraceObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_GameTraceChannel1));
 			TArray<FHitResult> HitResults;
 
-			ZVector = FVector(0.f, 0.f, 1.f);
+			ZVector = GetActorUpVector();
 			// Trace in hit direction
+			//DrawDebugDirectionalArrow(GetWorld(), GetActorLocation(), GetActorLocation() + GetActorUpVector() * 100.f, 5.0, FColor::Cyan, false, 10.f);
 
-			TraceDirection = FVector(-LocalPosition.X, -LocalPosition.Y, 0);
+			TraceDirection = ImpactDirection;
 			TraceDirection.Normalize();
 
 			TraceDirectionPerpendicular = UKismetMathLibrary::Cross_VectorVector(TraceDirection, ZVector);
@@ -347,6 +357,7 @@ void AChoppableTree::CalculateMeshThickness(FVector ImpactVertice)
 				NewImpactVertice + TraceDirection * 200.f, TraceObjectTypes, false, TArray<AActor*>(), 
 				EDrawDebugTrace::None, HitResults, false);
 
+			//DrawDebugLine(GetWorld(), NewImpactVertice - TraceDirection * 50.f, NewImpactVertice + TraceDirection * 200.f, FColor::Red, false, 20.f);
 			for (auto& HitResult : HitResults)
 			{
 				if (HitResult.GetActor() == this)
@@ -413,94 +424,9 @@ void AChoppableTree::MulticastSplitTree_Implementation(FVector SplitPoint, FVect
 
 		StumpCapsule->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	}
-	
 
-	//float HeightOfCap;
-	//bool bDoOnce = false;
-	//// Moving Cap Vertices
-
-	//FProcMeshSection* CapSection = TreeStumpProcMesh->GetProcMeshSection(1);
-	//TArray<FVector> CapVertices;
-	//TArray<FVector> CapNormals;
-	//TArray<FVector2D> CapUV;
-	//TArray<FColor> CapColors;
-	//TArray<FProcMeshTangent> CapTangents;
-	//TArray<FVector> NewCapVertices;
-	//for (auto ver : CapSection->ProcVertexBuffer)
-	//{
-	//	if (!bDoOnce)
-	//	{
-	//		HeightOfCap = ver.Position.Z;
-	//		bDoOnce = true;
-	//	}
-
-	//	CapVertices.Add(ver.Position);
-	//	if (FVector(ver.Position.X, ver.Position.Y, 0).Size() > MinDistanceFromCenterToBeAffectedByRandomOffset)
-	//	{
-	//		NewCapVertices.Add(FVector(ver.Position.X, ver.Position.Y, ver.Position.Z + FMath::FRandRange(-SplitVertexRandomness, SplitVertexRandomness) - DownShiftOfVertices));
-	//	}
-	//	else
-	//	{
-	//		NewCapVertices.Add(FVector(ver.Position.X, ver.Position.Y, ver.Position.Z - DownShiftOfVertices));
-	//	}
-
-	//	DrawDebugSphere(GetWorld(), GetActorLocation() + NewCapVertices[NewCapVertices.Num() - 1], 1.f, 4, FColor::Red, true, 10.f);
-	//	CapNormals.Add(ver.Normal);
-	//	CapUV.Add(ver.UV0);
-	//	CapColors.Add(ver.Color);
-	//	CapTangents.Add(ver.Tangent);
-	//	DrawDebugSphere(GetWorld(), GetActorLocation() + ver.Position, 0.5f, 4, FColor::Orange, true, 10.f);
-	//}
-
-	//TreeStumpProcMesh->UpdateMeshSection(1, NewCapVertices, CapNormals, CapUV, CapColors, CapTangents);
-
-	//// Moving Stump Vertices if in path of Cap vertice.
-
-	//FProcMeshSection* StumpSection = TreeStumpProcMesh->GetProcMeshSection(0);
-	//TArray<FVector> StumpVertices;
-	//TArray<FVector> StumpNormals;
-	//TArray<FVector2D> StumpUV;
-	//TArray<FColor> StumpColors;
-	//TArray<FProcMeshTangent> StumpTangents;
-	//for (auto ver : StumpSection->ProcVertexBuffer)
-	//{
-	//	//DrawDebugSphere(GetWorld(), GetActorLocation() + ver.Position, 0.5f, 4, FColor::Purple, true, 10.f);
-	//	bool bIsAlsoCapVertice = false;
-	//	
-	//	for (int32 i = 0; i < CapVertices.Num(); i++)
-	//	{
-	//		// Determining if vertice lies on line between old and new positions of cap vertice.
-	//		float DistanceFromOrignial = FMath::Abs(FVector::Distance(CapVertices[i], ver.Position));
-	//		float DistanceToNew = FMath::Abs(FVector::Distance(NewCapVertices[i], ver.Position));
-	//		float TotalDistance = FMath::Abs(FVector::Distance(CapVertices[i], NewCapVertices[i]));
-	//		UE_LOG(LogTemp, Warning, TEXT("%d, %d"), DistanceFromOrignial + DistanceToNew, TotalDistance);
-	//		if (FMath::IsNearlyEqual(DistanceFromOrignial + DistanceToNew, TotalDistance) || ver.Position.Equals(CapVertices[i]))
-	//		{
-	//			DrawDebugSphere(GetWorld(), GetActorLocation() + ver.Position, 1.f, 4, FColor::Cyan, true, 10.f);
-	//			UE_LOG(LogTemp, Warning, TEXT("Cap"));
-	//			StumpVertices.Add(NewCapVertices[i]);
-	//			bIsAlsoCapVertice = true;
-	//			break;
-	//		}
-	//	}
-	//	if (!bIsAlsoCapVertice)
-	//	{
-	//		if (ver.Position.Z > HeightOfCap - DownShiftOfVertices)
-	//		{
-	//			StumpVertices.Add(FVector(ver.Position.X, ver.Position.Y, HeightOfCap - DownShiftOfVertices));
-	//		}
-	//		else
-	//		{
-	//			StumpVertices.Add(ver.Position);
-	//		}
-	//	}
-	//	DrawDebugSphere(GetWorld(), GetActorLocation() + StumpVertices[StumpVertices.Num() - 1], 0.5f, 4, FColor::Purple, true, 10.f);
-	//	StumpNormals.Add(ver.Normal);
-	//	StumpUV.Add(ver.UV0);
-	//	StumpColors.Add(ver.Color);
-	//	StumpTangents.Add(ver.Tangent);
-
-	//}
+	FTransform ActorTransform = GetActorTransform();
+	FTransform InverseActorTransform = ActorTransform.Inverse();
 
 	float HeightOfCap;
 	bool bDoOnce = false;
@@ -513,6 +439,7 @@ void AChoppableTree::MulticastSplitTree_Implementation(FVector SplitPoint, FVect
 	TArray<FVector> NewCapVertices;
 	for (const auto &ver : CapSection->ProcVertexBuffer)
 	{
+		FVector LocalVertex = ActorTransform.TransformVector(ver.Position);
 		if (!bDoOnce)
 		{
 			HeightOfCap = ver.Position.Z;
@@ -520,25 +447,17 @@ void AChoppableTree::MulticastSplitTree_Implementation(FVector SplitPoint, FVect
 		}
 
 		CapVertices.Add(ver.Position);
-		/*if (FVector(ver.Position.X, ver.Position.Y, 0).Size() > MinDistanceFromCenterToBeAffectedByRandomOffset)
-		{
-			NewCapVertices.Add(FVector(ver.Position.X, ver.Position.Y, ver.Position.Z + FMath::FRandRange(-SplitVertexRandomness, SplitVertexRandomness) - DownShiftOfVertices));
-		}
-		else
-		{
-			NewCapVertices.Add(FVector(ver.Position.X, ver.Position.Y, ver.Position.Z - DownShiftOfVertices));
-		}*/
 
-		FVector ImpactDirection = GetImpactDirectionForLocalPoint(ver.Position);
+		FVector ImpactDirection = GetImpactDirectionForLocalPoint(LocalVertex);
 
 		float DistanceToCenter = ImpactDirection.Size();
 		ImpactDirection.Normalize();
 
 		if (DistanceToCenter > MinDistanceFromCenter)
 		{
-			FVector BoundaryForCurrentVertice = FVector(0.f, 0.f, ver.Position.Z) + ((-ImpactDirection) * MinDistanceFromCenter);
+			FVector BoundaryForCurrentVertice = (LocalVertex + ImpactDirection * DistanceToCenter) + ((-ImpactDirection) * MinDistanceFromCenter);
 
-			NewCapVertices.Add(BoundaryForCurrentVertice);
+			NewCapVertices.Add(InverseActorTransform.TransformVector(BoundaryForCurrentVertice));
 
 		}
 		else
@@ -546,12 +465,12 @@ void AChoppableTree::MulticastSplitTree_Implementation(FVector SplitPoint, FVect
 			NewCapVertices.Add(ver.Position);
 		}
 
-		DrawDebugSphere(GetWorld(), GetActorLocation() + NewCapVertices[NewCapVertices.Num() - 1], 1.f, 4, FColor::Red, true, 10.f);
+		//DrawDebugSphere(GetWorld(), GetActorLocation() + NewCapVertices[NewCapVertices.Num() - 1], 1.f, 4, FColor::Red, true, 10.f);
 		CapNormals.Add(ver.Normal);
 		CapUV.Add(ver.UV0);
 		CapColors.Add(ver.Color);
 		CapTangents.Add(ver.Tangent);
-		DrawDebugSphere(GetWorld(), GetActorLocation() + ver.Position, 0.5f, 4, FColor::Orange, true, 10.f);
+		//DrawDebugSphere(GetWorld(), GetActorLocation() + ver.Position, 0.5f, 4, FColor::Orange, true, 10.f);
 	}
 
 	TreeStumpProcMesh->UpdateMeshSection(1, NewCapVertices, CapNormals, CapUV, CapColors, CapTangents);
@@ -568,11 +487,12 @@ void AChoppableTree::MulticastSplitTree_Implementation(FVector SplitPoint, FVect
 		bool bIsAlsoCapVertice = false;
 		bool bisAlsoStumpColor = false;
 
+
 		for (int32 i = 0; i < CapVertices.Num(); i++)
 		{
 			if ((ver.Position - CapVertices[i]).Size() < 0.5f)
 			{
-				DrawDebugSphere(GetWorld(), GetActorLocation() + ver.Position, 1.f, 4, FColor::Cyan, true, 10.f);
+				//DrawDebugSphere(GetWorld(), GetActorLocation() + ver.Position, 1.f, 4, FColor::Cyan, true, 10.f);
 				//UE_LOG(LogTemp, Warning, TEXT("Cap Color: %s"), *ver.Color.ToString());
 
 				StumpVertices.Add(NewCapVertices[i]);
@@ -591,7 +511,7 @@ void AChoppableTree::MulticastSplitTree_Implementation(FVector SplitPoint, FVect
 		{
 			StumpVertices.Add(ver.Position);
 		}
-		DrawDebugSphere(GetWorld(), GetActorLocation() + StumpVertices[StumpVertices.Num() - 1], 0.5f, 4, FColor::Purple, true, 10.f);
+		//DrawDebugSphere(GetWorld(), GetActorLocation() + StumpVertices[StumpVertices.Num() - 1], 0.5f, 4, FColor::Purple, true, 10.f);
 		StumpNormals.Add(ver.Normal);
 		StumpUV.Add(ver.UV0);	
 		StumpTangents.Add(ver.Tangent);
@@ -629,22 +549,25 @@ void AChoppableTree::FitPhysicsCapsuleToSplit(FVector SplitPoint)
 
 }
 
-FVector AChoppableTree::GetClosestPointOnCenterSpline(FVector Point)
-{
-	if (!CenterSpline) return GetActorLocation();
-	
-	return CenterSpline->FindLocationClosestToWorldLocation(Point, ESplineCoordinateSpace::World);
-
-}
-
 FVector AChoppableTree::GetImpactDirectionForLocalPoint(FVector LocalPoint)
 {
 	if (!CenterSpline) return FVector(-LocalPoint.X, -LocalPoint.Y, 0);
 
-	FVector ClosestCenterPoint = GetClosestPointOnCenterSpline(GetActorLocation() + LocalPoint);
+	FVector ClosestCenterPoint = GetClosestPointOnCenterSpline(LocalPoint);
 
-	return FVector(ClosestCenterPoint.X - (GetActorLocation() + LocalPoint).X, 
-		ClosestCenterPoint.Y - (GetActorLocation() + LocalPoint).Y, 0.f);
+	FVector ImpactDirection = ClosestCenterPoint - (GetActorLocation() + LocalPoint);
+
+	//DrawDebugDirectionalArrow(GetWorld(), LocalPoint + GetActorLocation(), LocalPoint + GetActorLocation() + ImpactDirection, 2.0, FColor::Orange, false, 20.f);
+
+	return ImpactDirection;
+}
+
+FVector AChoppableTree::GetClosestPointOnCenterSpline(FVector LocalPoint)
+{
+	if (!CenterSpline) return GetActorLocation();
+	
+	return CenterSpline->FindLocationClosestToWorldLocation(GetActorLocation() + LocalPoint, ESplineCoordinateSpace::World);
+
 }
 
 // When the tree hits the ground after splitting

@@ -22,5 +22,6 @@ public:
 	FVector TopLeft;
 	FVector Center;
 	FVector BottomRight;
-	bool bCanTreeBeHere = false;
+	bool bCanTreeBeHere = true;
+	bool bIsTreeHere = false;
 };

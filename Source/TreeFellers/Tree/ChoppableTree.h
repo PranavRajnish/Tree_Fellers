@@ -99,7 +99,7 @@ protected:
 
 private:
 
-	void CalculateMeshThickness(FVector ImpactPoint);
+	void CalculateMeshThickness(FVector ImpactPoint, FVector ImpactDirection);
 	FVector GetClosestPointOnCenterSpline(FVector Point);
 	FVector GetImpactDirectionForLocalPoint(FVector LocalPoint);
 

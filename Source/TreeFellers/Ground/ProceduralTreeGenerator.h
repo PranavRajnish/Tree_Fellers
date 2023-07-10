@@ -11,7 +11,7 @@ struct FGroundTile;
 class AChoppableTree;
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
-class TREEFELLERS_API UProceduralTreeGenerator : public UActorComponent
+class TREEFELLERS_API UProceduralTreeGenerator : public USceneComponent
 {
 	GENERATED_BODY()
 
@@ -24,6 +24,9 @@ protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
 
+	UPROPERTY(EditAnywhere)
+	UStaticMeshComponent* AltitudePlane;
+
 	UPROPERTY()
 	AProceduralGround* Ground = nullptr;
 	UPROPERTY(EditAnywhere, Meta = (ClampMin = 1.0f))
@@ -31,9 +34,21 @@ protected:
 	UPROPERTY(EditAnywhere, Meta = (ClampMin = 0.0f, ClampMax = 1.0f))
 	float TreeDensity = 1.0f;
 	UPROPERTY(EditAnywhere)
+	float AltitudeThreshold = 1000.f;
+	UPROPERTY(EditAnywhere)
+	bool bShowAltitudePlane = true;
+	UPROPERTY(EditAnywhere)
 	TArray<TSubclassOf<AActor>> TreeClasses;
 	UPROPERTY(EditAnywhere)
 	float TreeRadius = 500.f;
+	UPROPERTY(EditAnywhere)
+	bool bShowGrid = false;
+	UPROPERTY(EditAnywhere)
+	bool bRandomYaw = true;
+	UPROPERTY(EditAnywhere, Meta = (ClampMin = 0.f, ClampMax = 0.99999f));
+	float ScaleRandomness = 0.15;
+	UPROPERTY(EditAnywhere)
+	float TreeInsertionDepth = 10.f;
 
 	UFUNCTION(CallInEditor)
 	void GenerateTrees();
@@ -64,6 +79,8 @@ private:
 
 	UPROPERTY()
 	TArray<AActor*> SpawnedTrees;
+
+	float GetAngleBetweenVectors(FVector A, FVector B);
 
 public:
 	FORCEINLINE void SetGround(AProceduralGround* NewGround) { UE_LOG(LogTemp, Warning, TEXT("Ground Set")); Ground = NewGround; }

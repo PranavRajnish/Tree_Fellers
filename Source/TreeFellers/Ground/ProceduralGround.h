@@ -48,6 +48,8 @@ protected:
 	UMaterialInterface* GroundMaterial;
 	UPROPERTY(EditAnywhere)
 	UProceduralTreeGenerator* ProceduralTreeGenerator;
+	/*UPROPERTY(EditAnywhere)
+	UStaticMeshComponent* AltitudePlane;*/
 
 #if WITH_EDITOR
 	virtual void PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent) override;

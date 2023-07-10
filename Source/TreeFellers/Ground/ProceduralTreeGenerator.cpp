@@ -15,6 +15,10 @@ UProceduralTreeGenerator::UProceduralTreeGenerator()
 	// off to improve performance if you don't need them.
 	PrimaryComponentTick.bCanEverTick = true;
 
+	AltitudePlane = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("AltitudePlane"));
+	AltitudePlane->SetupAttachment(this);
+	AltitudePlane->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	AltitudePlane->bHiddenInGame = true;
 }
 
 
@@ -35,7 +39,21 @@ void UProceduralTreeGenerator::PostEditChangeProperty(FPropertyChangedEvent& Pro
 
 	TreeRadius = TreeRadius > GridCellSize / 2 ? GridCellSize / 2 : TreeRadius;
 
-	GenerateTrees();
+	UE_LOG(LogTemp, Warning, TEXT("Change of : %s"), *PropertyChangedEvent.GetPropertyName().ToString());
+	if (PropertyChangedEvent.GetPropertyName() == FName("AltitudeThreshold"))
+	{
+		Ground = Ground ? Ground : Cast<AProceduralGround>(GetOwner());
+		if (!Ground)
+			return;
+
+		FVector2D GroundSize = Ground->GetMeshSize();
+		AltitudePlane->SetRelativeLocation(FVector(GroundSize.X / 2.f, GroundSize.Y / 2.f, AltitudeThreshold));
+	}
+	else if (PropertyChangedEvent.GetPropertyName() == FName("bShowAltitudePlane"))
+	{
+		AltitudePlane->SetVisibility(bShowAltitudePlane);
+	}
+	//GenerateTrees();
 }
 #endif
 
@@ -53,13 +71,16 @@ void UProceduralTreeGenerator::GenerateTrees()
 	UE_LOG(LogTemp, Warning, TEXT("Generating Trees"));
 
 	Ground = Ground ? Ground : Cast<AProceduralGround>(GetOwner());
-	if (!Ground)
+	if (!Ground || TreeClasses.Num() <= 0)
 		return;
-
+	
 	ClearTrees();
 	CreateGrid();
 	CalculateTreeCells();
-	DisplayGrid();
+	if (bShowGrid)
+	{
+		DisplayGrid();
+	}
 	SpawnTrees();
 }
 
@@ -70,10 +91,13 @@ void UProceduralTreeGenerator::CreateGrid()
 		return;
 
 	FVector Offset = Ground->GetActorLocation();
-	UE_LOG(LogTemp, Warning, TEXT("Ground Location: %s"), *Offset.ToString());
 
 	FVector2D GroundSize = Ground->GetMeshSize();
-	UE_LOG(LogTemp, Warning, TEXT("Mesh Size: %s"), *GroundSize.ToString());
+	
+	AltitudePlane->SetRelativeLocation(FVector(GroundSize.X/2.f, GroundSize.Y/2.f, AltitudeThreshold));
+	AltitudePlane->SetWorldScale3D(FVector(GroundSize.X/100, GroundSize.Y/100, 1.f));
+	AltitudePlane->SetVisibility(bShowAltitudePlane);
+
 	Rows = GroundSize.Y / GridCellSize;
 	Columns = GroundSize.X / GridCellSize;
 	TreeMax = Rows * Columns;
@@ -89,7 +113,7 @@ void UProceduralTreeGenerator::CreateGrid()
 			Center = FVector(c * GridCellSize + GridCellSize/2, r * GridCellSize + GridCellSize/2, 0);
 			BottomRight = FVector(c * GridCellSize + GridCellSize, r * GridCellSize + GridCellSize, 0);
 			Grid.Add(TSharedPtr<FGroundTile>(new FGroundTile(Offset + TopLeft, Offset + Center, Offset + BottomRight)));
-			GridIndeces.Add(IndexCount);
+			//GridIndeces.Add(IndexCount);
 			IndexCount++;
 		}
 	}
@@ -97,10 +121,34 @@ void UProceduralTreeGenerator::CreateGrid()
 
 void UProceduralTreeGenerator::CalculateTreeCells()
 {
-	for (int i = 0; i < NumberOfTrees; i++)
+	if (!Ground) return;
+
+	TArray<TEnumAsByte<EObjectTypeQuery>> TraceObjectTypes;
+	TraceObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_GameTraceChannel2));
+
+	int32 IndexCount = 0;
+	for (auto& Cell : Grid)
+	{
+		FHitResult HitResult;
+		bool bHit = GetWorld()->LineTraceSingleByObjectType(HitResult, FVector(Cell->Center.X, Cell->Center.Y, Ground->GetActorLocation().Z + 2 * Ground->GetZMultiplier()),
+			FVector(Cell->Center.X, Cell->Center.Y, Ground->GetActorLocation().Z - 2 * Ground->GetZMultiplier()), TraceObjectTypes);
+
+		if (bHit && HitResult.ImpactPoint.Z >= AltitudeThreshold)
+		{
+			Cell->bCanTreeBeHere = false;
+		}
+		else
+		{
+			GridIndeces.Add(IndexCount);
+		}
+		IndexCount++;
+	}
+
+	int MaxPossibleTrees = FMath::Min(NumberOfTrees, GridIndeces.Num());
+	for (int i = 0; i < MaxPossibleTrees; i++)
 	{
 		int Index = FMath::RandRange(0, GridIndeces.Num() - 1);
-		Grid[GridIndeces[Index]]->bCanTreeBeHere = true;
+		Grid[GridIndeces[Index]]->bIsTreeHere = true;
 		GridIndeces.RemoveAt(Index);
 	}
 }
@@ -123,7 +171,7 @@ void UProceduralTreeGenerator::DisplayGrid()
 
 void UProceduralTreeGenerator::SpawnTrees()
 {
-	if (!Ground)
+	if (!Ground || TreeClasses.Num() == 0)
 		return;
 
 	TArray<TEnumAsByte<EObjectTypeQuery>> TraceObjectTypes;
@@ -132,7 +180,7 @@ void UProceduralTreeGenerator::SpawnTrees()
 	int Count = 1;
 	for (auto& Cell : Grid)
 	{
-		if (!Cell->bCanTreeBeHere)
+		if (!Cell->bIsTreeHere)
 			continue;
 
 		FVector2D Position2D = GetRandomValidTreePositionInCell(Cell);
@@ -141,20 +189,34 @@ void UProceduralTreeGenerator::SpawnTrees()
 		bool bHit = GetWorld()->LineTraceSingleByObjectType(HitResult, FVector(Position2D.X, Position2D.Y, Ground->GetActorLocation().Z + 2 * Ground->GetZMultiplier()),
 			FVector(Position2D.X, Position2D.Y, Ground->GetActorLocation().Z - 2 * Ground->GetZMultiplier()), TraceObjectTypes);
 
-		if (bHit && TreeClasses.Num() > 0)
+		if (bHit)
 		{
 			//DrawDebugSphere(GetWorld(), FVector(Position2D.X, Position2D.Y, HitResult.ImpactPoint.Z), TreeRadius, 16, FColor::Green, true);
 			//DrawDebugLine(GetWorld(), FVector(Position2D.X, Position2D.Y, HitResult.ImpactPoint.Z), FVector(Position2D.X, Position2D.Y, HitResult.ImpactPoint.Z) + HitResult.ImpactNormal * 500.f, FColor::Magenta, true);
 
 			auto TreeClass = TreeClasses[FMath::RandRange(0, TreeClasses.Num() - 1)];
+			if (!TreeClass)
+				return;
 
 			FVector SpawnLocation(Position2D.X, Position2D.Y, HitResult.ImpactPoint.Z);
+			SpawnLocation += (-HitResult.ImpactNormal) * TreeInsertionDepth;
 
-			FRotator SpawnRotation = UKismetMathLibrary::MakeRotFromYZ(FVector(0.f, 1.f, 0.f), HitResult.ImpactNormal);
+			FRotator RotFromYZ = UKismetMathLibrary::MakeRotFromYZ(FVector(0.f, 1.f, 0.f), HitResult.ImpactNormal);
+			FRotator RotFromXZ = UKismetMathLibrary::MakeRotFromXZ(FVector(1.f, 0.f, 0.f), HitResult.ImpactNormal);
+			FRotator SpawnRotation = FRotator(RotFromYZ.Pitch, 0.f, RotFromXZ.Roll);
+			if (bRandomYaw)
+			{
+				SpawnRotation.Add(0.f, FMath::RandRange(0.f, 360.f), 0.f);
+			}
+
+			float ScaleRange = 1.f * ScaleRandomness;
+			FVector SpawnScale = FVector(1.f, 1.f, 1.f) * FMath::RandRange(1 - ScaleRange, 1 + ScaleRange);
+
+			FTransform SpawnTransform(SpawnRotation, SpawnLocation, SpawnScale);
 
 			FActorSpawnParameters SpawnParameters;
 
-			AActor* Tree = GetWorld()->SpawnActor<AActor>(TreeClass, SpawnLocation, SpawnRotation, SpawnParameters);
+			AActor* Tree = GetWorld()->SpawnActor<AActor>(TreeClass, SpawnTransform, SpawnParameters);
 			SpawnedTrees.Add(Tree);
 
 			#if WITH_EDITOR
@@ -186,6 +248,16 @@ FVector2D UProceduralTreeGenerator::GetRandomValidTreePositionInCell(TSharedPtr<
 	return FVector2D(XPosition, YPosition);
 }
 
+float UProceduralTreeGenerator::GetAngleBetweenVectors(FVector A, FVector B)
+{
+	A.Normalize();
+	B.Normalize();
+
+	float DotProd = FVector::DotProduct(A, B);
+
+	return FMath::RadiansToDegrees(FMath::Acos(DotProd));
+
+}
 
 
 

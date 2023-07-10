@@ -22,6 +22,9 @@ AProceduralGround::AProceduralGround()
 	ProceduralTreeGenerator = CreateDefaultSubobject<UProceduralTreeGenerator>("TreeSpawner");
 	AddOwnedComponent(ProceduralTreeGenerator);
 
+	//AltitudePlane = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("AltitudePlane"));
+	//AltitudePlane->SetupAttachment();
+
 }
 
 // Called when the game starts or when spawned
