@@ -9,6 +9,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Camera/PlayerCameraManager.h"
 #include "Camera/CameraShakeBase.h"
+#include "BuildComponent.h"
 
 APlayerCharacter::APlayerCharacter()
 {
@@ -17,6 +18,9 @@ APlayerCharacter::APlayerCharacter()
 	PlayerCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("Player Camera"));
 	PlayerCamera->SetupAttachment(GetMesh(), FName("head"));
 	PlayerCamera->bUsePawnControlRotation = true;
+
+	BuildComponent = CreateDefaultSubobject<UBuildComponent>(TEXT("Build Component"));
+	AddOwnedComponent(BuildComponent);
 
 	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
 	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block); 
@@ -37,6 +41,12 @@ void APlayerCharacter::BeginPlay()
 	{
 		Axe->SetOwner(this);
 		Axe->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("RightHandSocket"));
+	}
+	if (BuildComponent)
+	{
+		BuildComponent->SetCameraComponent(PlayerCamera);
+		bIsBuildModeOn = false;
+		BuildComponent->SetBuildModeOn(bIsBuildModeOn);
 	}
 
 	PlayerController = Cast<APlayerController>(Controller);
@@ -72,6 +82,10 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	PlayerInputComponent->BindAxis("LookUp", this, &ThisClass::LookUp);
 	PlayerInputComponent->BindAction("Attack", EInputEvent::IE_Pressed, this, &ThisClass::AttackButtonPressed);
 	PlayerInputComponent->BindAction("Jump", EInputEvent::IE_Pressed, this, &ACharacter::Jump);
+	PlayerInputComponent->BindAction("BuildMode", EInputEvent::IE_Pressed, this, &ThisClass::BuildButtonPressed);
+	PlayerInputComponent->BindAction("Build", EInputEvent::IE_Pressed, this, &ThisClass::PlaceBuildPressed);
+	PlayerInputComponent->BindAction("MouseWheelUp", EInputEvent::IE_Pressed, this, &ThisClass::MouseWheelUp);
+	PlayerInputComponent->BindAction("MouseWheelDown", EInputEvent::IE_Pressed, this, &ThisClass::MouseWheelDown);
 }
 
 void APlayerCharacter::MoveForward(float AxisValue)
@@ -130,6 +144,40 @@ void APlayerCharacter::AttackButtonPressed()
 		bIsSwingingAxe = true;
 		ServerSwingAxe();
 		
+	}
+}
+
+void APlayerCharacter::BuildButtonPressed()
+{
+	if (BuildComponent)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Build Button Pressed"));
+		bIsBuildModeOn = !bIsBuildModeOn;
+		BuildComponent->SetBuildModeOn(bIsBuildModeOn);
+	}
+}
+
+void APlayerCharacter::PlaceBuildPressed()
+{
+	if (BuildComponent)
+	{
+		BuildComponent->PlaceBuilding();
+	}
+}
+
+void APlayerCharacter::MouseWheelUp()
+{
+	if (BuildComponent)
+	{
+		BuildComponent->NextBuildObject();
+	}
+}
+
+void APlayerCharacter::MouseWheelDown()
+{
+	if (BuildComponent)
+	{
+		BuildComponent->PreviousBuildObject();
 	}
 }
 

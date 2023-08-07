@@ -6,6 +6,8 @@
 #include "GameFramework/Character.h"
 #include "PlayerCharacter.generated.h"
 
+class  UBuildComponent;
+
 UCLASS()
 class TREEFELLERS_API APlayerCharacter : public ACharacter
 {
@@ -23,12 +25,15 @@ public:
 	void StopCalculateAttackCollision();
 	void AxeImpact();
 
+
 protected:
 	virtual void BeginPlay() override;
 
 private:
 	UPROPERTY(VisibleAnywhere, Category = Camera)
 	class UCameraComponent* PlayerCamera;
+	UPROPERTY(VisibleAnywhere);
+	UBuildComponent* BuildComponent;
 
 	UPROPERTY(EditAnywhere, Category = Axe)
 	TSubclassOf<class AAxe> AxeClass;
@@ -51,6 +56,10 @@ private:
 	void Turn(float AxisValue);
 	void LookUp(float AxisValue);
 	void AttackButtonPressed();
+	void BuildButtonPressed();
+	void PlaceBuildPressed();
+	void MouseWheelUp();
+	void MouseWheelDown();
 
 	// Axe
 	UFUNCTION(Server, Reliable)
@@ -59,6 +68,7 @@ private:
 	void MulticastSwingAxe();
 
 	bool bCalculateAttackCollision = false;
+	bool bIsBuildModeOn = false;
 
 	UPROPERTY(EditAnywhere, Category = "Camera")
 	TSubclassOf<class UCameraShakeBase> SwingCameraShake;
