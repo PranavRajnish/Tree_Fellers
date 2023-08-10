@@ -17,7 +17,8 @@ public:
 	ABuildable();
 	virtual void Tick(float DeltaTime) override;
 
-	TArray<UBoxComponent*> GetSnapColliders();
+	TArray<UBoxComponent*> GetSnapColliders(FName TagName);
+	void SetObjectMesh(UStaticMesh* NewMesh);
 
 
 protected:

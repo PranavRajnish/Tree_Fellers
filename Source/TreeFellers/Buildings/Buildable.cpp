@@ -82,10 +82,10 @@ void ABuildable::Tick(float DeltaTime)
 //
 //#endif
 
-TArray<UBoxComponent*> ABuildable::GetSnapColliders()
+TArray<UBoxComponent*> ABuildable::GetSnapColliders(FName TagName)
 {
 	TArray<UBoxComponent*> BoxComponents;
-	TArray<UActorComponent*> ActorComponents = GetComponentsByTag(UBoxComponent::StaticClass(), FName("SnapCollider"));
+	TArray<UActorComponent*> ActorComponents = GetComponentsByTag(UBoxComponent::StaticClass(), TagName);
 	for (UActorComponent* c : ActorComponents)
 	{
 		UBoxComponent* b = Cast<UBoxComponent>(c);
@@ -95,4 +95,11 @@ TArray<UBoxComponent*> ABuildable::GetSnapColliders()
 
 	UE_LOG(LogTemp, Warning, TEXT("Number of snap colliders: %d"), BoxComponents.Num());
 	return BoxComponents;
+}
+
+void ABuildable::SetObjectMesh(UStaticMesh* NewMesh)
+{
+	if (!ObjectMesh) return;
+
+	ObjectMesh->SetStaticMesh(NewMesh);
 }

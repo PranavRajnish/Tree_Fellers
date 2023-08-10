@@ -16,11 +16,14 @@ struct FBuildObject : public FTableRowBase
 		UStaticMesh* ObjectMesh;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	TSubclassOf<AActor> ObjectActorClass;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	FName TagName;
 };
 
 
 class APlayerCharacter;
 class UCameraComponent;
+class ABuildable;
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class TREEFELLERS_API UBuildComponent : public USceneComponent
@@ -57,14 +60,12 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Parameters")
 	float TraceAngle = -10.f;
 	UPROPERTY(EditAnywhere, Category = "Parameters")
+	float TraceZOffset = 100.f;
+	UPROPERTY(EditAnywhere, Category = "Parameters")
 	float TraceBuffer = 0.05f;
+
 	UPROPERTY(EditAnywhere, Category = "Parameters")
 	UDataTable* BuildObjects;
-
-	FTimerHandle TraceTimerHandle;
-
-	TArray<FName> BuildObjectRowNames;
-	int32 BuildObjectIndex = 0;
 
 	// Materials
 	UPROPERTY(EditAnywhere, Category = "Materials")
@@ -73,11 +74,16 @@ protected:
 	UMaterialInstance* RedPreview;
 
 	void SetObjectMaterial(bool bIsGreen);
+	bool DetectSnapColliders(ABuildable* Buildable, UPrimitiveComponent* HitComponent);
 
 private:
 	FTransform ObjectTransform;
 	bool bIsInBuildMode = false;
 	bool bCanBuildHere = false;
+
+	FTimerHandle TraceTimerHandle;
+	TArray<FName> BuildObjectRowNames;
+	int32 BuildObjectIndex = 0;
 
 	void SpawnObjectPreview();
 	void PreviewObjectLocation();

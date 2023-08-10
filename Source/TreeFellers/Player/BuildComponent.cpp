@@ -5,7 +5,8 @@
 #include "PlayerCharacter.h"
 #include "Camera/CameraComponent.h"
 #include "Engine/StaticMeshActor.h"
-
+#include "TreeFellers/Buildings/Buildable.h"
+#include "Components/BoxComponent.h"
 
 UBuildComponent::UBuildComponent()
 {
@@ -91,29 +92,100 @@ void UBuildComponent::PlaceBuilding()
 
 void UBuildComponent::PreviewObjectLocation()
 {
-	if (!CameraComponent || !PlayerCharacter) return;
+	if (!CameraComponent || !PlayerCharacter || !CurrentObjectComponent) return;
 
 	TArray<TEnumAsByte<EObjectTypeQuery>> TraceObjectTypes;
 	TraceObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_GameTraceChannel2));
 
-	FHitResult HitResult;
-	FVector StartVector = PlayerCharacter->GetActorLocation();
-	FVector EndVector = PlayerCharacter->GetActorLocation() + (CameraComponent->GetForwardVector() * PreviewTraceDistance);
+	//FHitResult HitResult;
+	TArray<FHitResult> HitResults;
+	FVector StartVector = PlayerCharacter->GetActorLocation() + FVector(0.f, 0.f, TraceZOffset) + (PlayerCharacter->GetActorForwardVector() * 50.f);
+	FVector EndVector = StartVector + (CameraComponent->GetForwardVector() * PreviewTraceDistance);
 	FVector NewVector = (EndVector - StartVector).RotateAngleAxis(TraceAngle, CameraComponent->GetRightVector());
 
 	//DrawDebugLine(GetWorld(), StartVector, StartVector + NewVector, FColor::Orange, false, -1.f, (uint8)0U, 5.f);
 	
-	bool bHit = GetWorld()->LineTraceSingleByObjectType(HitResult, StartVector, StartVector + NewVector, TraceObjectTypes);
+	//bool bHit = GetWorld()->LineTraceSingleByChannel(HitResult, StartVector, StartVector + NewVector, ECollisionChannel::ECC_GameTraceChannel3);
+	bool bHit = GetWorld()->LineTraceMultiByChannel(HitResults, StartVector, StartVector + NewVector, ECollisionChannel::ECC_GameTraceChannel3);
+
+	static const FString ContextString(TEXT("Build Objects Context"));
+	FBuildObject* BuildObject = BuildObjects->FindRow<FBuildObject>(BuildObjectRowNames[BuildObjectIndex], ContextString, true);
+
+	// First checking if there are any overlapping hits with a snap collider.
+	bool bCanSnap = false;
+	if (BuildObject)
+	{
+		// Looping through all hits to see if the corresponding snap collider has been hit.
+		for (auto& HitResult : HitResults)
+		{
+			ABuildable* Buildable = Cast<ABuildable>(HitResult.GetActor());
+			if (Buildable && HitResult.GetComponent()->ComponentHasTag(BuildObject->TagName))
+			{
+				bool isSnapCollider = DetectSnapColliders(Buildable, HitResult.GetComponent());
+				if (isSnapCollider)
+				{
+					bCanSnap = true;
+					ObjectTransform = HitResult.GetComponent()->GetComponentTransform();
+					break;
+				}
+			}
+		}
+	}
+
+	// If no snapping, checkin to see if there is a blocking hit.
+	if (!bCanSnap)
+	{
+		if (bHit)
+		{
+			ObjectTransform.SetLocation(HitResults[HitResults.Num() - 1].ImpactPoint);
+		}
+		else
+		{
+			ObjectTransform.SetLocation(StartVector + NewVector);
+		}
+	}
 	
+	// Changing of preview mesh color based on if change in blocking hit.
 	if (bCanBuildHere != bHit)
 	{
 		bCanBuildHere = bHit;
 		SetObjectMaterial(bCanBuildHere);
 	}
 
-	ObjectTransform.SetLocation(bHit ? HitResult.ImpactPoint : HitResult.TraceEnd);
 	CurrentObjectComponent->SetWorldTransform(ObjectTransform);
 
+}
+
+// Check if the hit component is the a snap collider of the same type of object.
+bool UBuildComponent::DetectSnapColliders(ABuildable* Buildable, UPrimitiveComponent* HitComponent)
+{
+	if (!Buildable || !BuildObjects) return false;
+
+	//UE_LOG(LogTemp, Warning, TEXT("Hit Snap Collider"));
+	UBoxComponent* HitCollider = Cast<UBoxComponent>(HitComponent);
+	if (!HitCollider) return false;
+
+	static const FString ContextString(TEXT("Build Objects Context"));
+	FBuildObject* BuildObject = BuildObjects->FindRow<FBuildObject>(BuildObjectRowNames[BuildObjectIndex], ContextString, true);
+
+	if (BuildObject)
+	{
+		CurrentObjectComponent->SetStaticMesh(BuildObject->ObjectMesh);
+
+		TArray<UBoxComponent*> SnapColliders = Buildable->GetSnapColliders(BuildObject->TagName);
+
+		for (UBoxComponent* SnapCollider : SnapColliders)
+		{
+			if (SnapCollider == HitCollider)
+			{
+				return true;
+			}
+		}
+	}
+
+	
+
+	return false;
 }
 
 void UBuildComponent::SpawnObjectPreview()
@@ -130,7 +202,7 @@ void UBuildComponent::SpawnObjectPreview()
 
 		//CurrentObjectComponent->AttachToComponent(GetRootComponent, FAttachmentTransformRules::KeepRelativeTransform);
 
-		
+		CurrentObjectComponent->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 		if (BuildObjects)
 		{
 			static const FString ContextString(TEXT("Build Objects Context"));
@@ -159,12 +231,12 @@ void UBuildComponent::SetObjectMaterial(bool bIsGreen)
 
 void UBuildComponent::ChangeMesh()
 {
-	if (!BuildObjects) return;
+	if (!BuildObjects || !CurrentObjectComponent) return;
 
 	static const FString ContextString(TEXT("Build Objects Context"));
 	FBuildObject* BuildObject = BuildObjects->FindRow<FBuildObject>(BuildObjectRowNames[BuildObjectIndex], ContextString, true);
 
-	if (BuildObject)
+	if (BuildObject && BuildObject->ObjectMesh)
 	{
 		CurrentObjectComponent->SetStaticMesh(BuildObject->ObjectMesh);
 	}
@@ -177,9 +249,10 @@ void UBuildComponent::SpawnBuildActor()
 	static const FString ContextString(TEXT("Build Objects Context"));
 	FBuildObject* BuildObject = BuildObjects->FindRow<FBuildObject>(BuildObjectRowNames[BuildObjectIndex], ContextString, true);
 
-	if (BuildObject)
+	if (BuildObject && BuildObject->ObjectActorClass)
 	{
-		GetWorld()->SpawnActor<AStaticMeshActor>(BuildObject->ObjectActorClass, ObjectTransform);
+		ABuildable* NewBuildable = GetWorld()->SpawnActor<ABuildable>(BuildObject->ObjectActorClass, ObjectTransform);
+		NewBuildable->SetObjectMesh(BuildObject->ObjectMesh);
 	} 
 }
 
