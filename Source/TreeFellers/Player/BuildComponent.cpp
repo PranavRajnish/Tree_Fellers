@@ -7,6 +7,9 @@
 #include "Engine/StaticMeshActor.h"
 #include "TreeFellers/Buildings/Buildable.h"
 #include "Components/BoxComponent.h"
+#include "TreeFellers/Buildings/SnapCollider.h"
+#include "Sound/SoundCue.h"
+#include "Kismet/GameplayStatics.h"
 
 UBuildComponent::UBuildComponent()
 {
@@ -47,6 +50,9 @@ void UBuildComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActor
 		{
 			GetWorld()->GetTimerManager().SetTimer(TraceTimerHandle, this, &ThisClass::PreviewObjectLocation, TraceBuffer, true);
 		}
+
+		/* Rotate object if rotate button is being pressed */
+		RotateBuild();
 	}
 	else
 	{
@@ -90,6 +96,30 @@ void UBuildComponent::PlaceBuilding()
 	}
 }
 
+void UBuildComponent::StartRotateBuild(bool bRotClockwise)
+{
+	bRotateBuild = true;
+	bRotateClockwise = bRotClockwise;
+}
+
+void UBuildComponent::StopRotatingBuild()
+{
+	bRotateBuild = false;
+}
+
+void UBuildComponent::RotateBuild()
+{
+	if (!bIsInBuildMode || !CurrentObjectComponent)
+		return;
+	if (!bRotateBuild)
+		return;
+	
+	UE_LOG(LogTemp, Warning, TEXT("Rotating Object"));
+	float RotationAmount = bRotateClockwise ? RotationMagnitude : -RotationMagnitude;
+	CurrentObjectComponent->SetRelativeRotation(CurrentObjectComponent->GetRelativeRotation() + FRotator(0.f, RotationAmount, 0.f));
+}
+
+
 void UBuildComponent::PreviewObjectLocation()
 {
 	if (!CameraComponent || !PlayerCharacter || !CurrentObjectComponent) return;
@@ -111,8 +141,10 @@ void UBuildComponent::PreviewObjectLocation()
 	static const FString ContextString(TEXT("Build Objects Context"));
 	FBuildObject* BuildObject = BuildObjects->FindRow<FBuildObject>(BuildObjectRowNames[BuildObjectIndex], ContextString, true);
 
-	// First checking if there are any overlapping hits with a snap collider.
 	bool bCanSnap = false;
+	bool bIsValidObjectLocation = true;
+
+	// First checking if there are any overlapping hits with a snap collider.
 	if (BuildObject)
 	{
 		// Looping through all hits to see if the corresponding snap collider has been hit.
@@ -121,10 +153,15 @@ void UBuildComponent::PreviewObjectLocation()
 			ABuildable* Buildable = Cast<ABuildable>(HitResult.GetActor());
 			if (Buildable && HitResult.GetComponent()->ComponentHasTag(BuildObject->TagName))
 			{
-				bool isSnapCollider = DetectSnapColliders(Buildable, HitResult.GetComponent());
+				USnapCollider* SnapCollider = Cast<USnapCollider>(HitResult.GetComponent());
+				if (!SnapCollider)
+					continue;
+
+				bool isSnapCollider = DetectSnapColliders(Buildable, SnapCollider);
 				if (isSnapCollider)
 				{
 					bCanSnap = true;
+					CurrentSnapCollider = SnapCollider;
 					ObjectTransform = HitResult.GetComponent()->GetComponentTransform();
 					break;
 				}
@@ -132,23 +169,32 @@ void UBuildComponent::PreviewObjectLocation()
 		}
 	}
 
-	// If no snapping, checkin to see if there is a blocking hit.
+	// If no snapping, checking to see if there is a blocking hit.
 	if (!bCanSnap)
 	{
+		CurrentSnapCollider = nullptr;
 		if (bHit)
 		{
 			ObjectTransform.SetLocation(HitResults[HitResults.Num() - 1].ImpactPoint);
 		}
 		else
 		{
+			bIsValidObjectLocation = false;
 			ObjectTransform.SetLocation(StartVector + NewVector);
 		}
+		ObjectTransform.SetRotation(CurrentObjectComponent->GetComponentRotation().Quaternion());
 	}
 	
-	// Changing of preview mesh color based on if change in blocking hit.
-	if (bCanBuildHere != bHit)
+	// Checking to see if there is already builable at snap location
+	if (CurrentSnapCollider && CurrentSnapCollider->GetIsInUse())
 	{
-		bCanBuildHere = bHit;
+		bIsValidObjectLocation = false;
+	}
+
+	// Changing of preview mesh color based on if change in blocking hit.
+	if (bCanBuildHere != bIsValidObjectLocation)
+	{
+		bCanBuildHere = bIsValidObjectLocation;
 		SetObjectMaterial(bCanBuildHere);
 	}
 
@@ -157,13 +203,9 @@ void UBuildComponent::PreviewObjectLocation()
 }
 
 // Check if the hit component is the a snap collider of the same type of object.
-bool UBuildComponent::DetectSnapColliders(ABuildable* Buildable, UPrimitiveComponent* HitComponent)
+bool UBuildComponent::DetectSnapColliders(ABuildable* Buildable, USnapCollider* HitComponent)
 {
 	if (!Buildable || !BuildObjects) return false;
-
-	//UE_LOG(LogTemp, Warning, TEXT("Hit Snap Collider"));
-	UBoxComponent* HitCollider = Cast<UBoxComponent>(HitComponent);
-	if (!HitCollider) return false;
 
 	static const FString ContextString(TEXT("Build Objects Context"));
 	FBuildObject* BuildObject = BuildObjects->FindRow<FBuildObject>(BuildObjectRowNames[BuildObjectIndex], ContextString, true);
@@ -172,18 +214,16 @@ bool UBuildComponent::DetectSnapColliders(ABuildable* Buildable, UPrimitiveCompo
 	{
 		CurrentObjectComponent->SetStaticMesh(BuildObject->ObjectMesh);
 
-		TArray<UBoxComponent*> SnapColliders = Buildable->GetSnapColliders(BuildObject->TagName);
+		TArray<USnapCollider*> SnapColliders = Buildable->GetSnapColliders(BuildObject->TagName);
 
-		for (UBoxComponent* SnapCollider : SnapColliders)
+		for (USnapCollider* SnapCollider : SnapColliders)
 		{
-			if (SnapCollider == HitCollider)
+			if (SnapCollider == HitComponent)
 			{
 				return true;
 			}
 		}
 	}
-
-	
 
 	return false;
 }
@@ -253,6 +293,16 @@ void UBuildComponent::SpawnBuildActor()
 	{
 		ABuildable* NewBuildable = GetWorld()->SpawnActor<ABuildable>(BuildObject->ObjectActorClass, ObjectTransform);
 		NewBuildable->SetObjectMesh(BuildObject->ObjectMesh);
+
+		if (CurrentSnapCollider)
+		{
+			CurrentSnapCollider->SetIsInUse(true);
+		}
+
+		if (BuildPlaceSFX)
+		{
+			UGameplayStatics::PlaySoundAtLocation(this, BuildPlaceSFX, ObjectTransform.GetLocation());
+		}
 	} 
 }
 

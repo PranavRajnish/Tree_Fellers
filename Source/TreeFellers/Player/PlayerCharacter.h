@@ -7,6 +7,7 @@
 #include "PlayerCharacter.generated.h"
 
 class  UBuildComponent;
+class ADoor;
 
 UCLASS()
 class TREEFELLERS_API APlayerCharacter : public ACharacter
@@ -60,6 +61,10 @@ private:
 	void PlaceBuildPressed();
 	void MouseWheelUp();
 	void MouseWheelDown();
+	void InteractButtonPressed();
+	void RotateBuildClockwise();
+	void RotateBuildAntiClockwise();
+	void StopRotatingBuild();
 
 	// Axe
 	UFUNCTION(Server, Reliable)
@@ -73,10 +78,16 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Camera")
 	TSubclassOf<class UCameraShakeBase> SwingCameraShake;
 
+	// Interaction
+	UPROPERTY()
+	ADoor* InteractionObject = nullptr;
+
 
 public:	
 	FORCEINLINE bool GetIsSwingingAxe() const { return bIsSwingingAxe; }
 	FORCEINLINE void SetIsSwingingAxe(bool isSwinging) { bIsSwingingAxe = isSwinging; }
 	FORCEINLINE AAxe* GetAxe() const { return Axe; }
+	FORCEINLINE ADoor* GetInteractionObject() const { return InteractionObject; }
+	FORCEINLINE void SetInteractionObject(ADoor* NewInteractionObject) { InteractionObject = NewInteractionObject; }
 
 };

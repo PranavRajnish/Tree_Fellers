@@ -10,6 +10,7 @@
 #include "Camera/PlayerCameraManager.h"
 #include "Camera/CameraShakeBase.h"
 #include "BuildComponent.h"
+#include "TreeFellers/Buildings/Door.h"
 
 APlayerCharacter::APlayerCharacter()
 {
@@ -84,8 +85,13 @@ void APlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCom
 	PlayerInputComponent->BindAction("Jump", EInputEvent::IE_Pressed, this, &ACharacter::Jump);
 	PlayerInputComponent->BindAction("BuildMode", EInputEvent::IE_Pressed, this, &ThisClass::BuildButtonPressed);
 	PlayerInputComponent->BindAction("Build", EInputEvent::IE_Pressed, this, &ThisClass::PlaceBuildPressed);
+	PlayerInputComponent->BindAction("Interact", EInputEvent::IE_Pressed, this, &ThisClass::InteractButtonPressed);
 	PlayerInputComponent->BindAction("MouseWheelUp", EInputEvent::IE_Pressed, this, &ThisClass::MouseWheelUp);
 	PlayerInputComponent->BindAction("MouseWheelDown", EInputEvent::IE_Pressed, this, &ThisClass::MouseWheelDown);
+	PlayerInputComponent->BindAction("RotateBuildClockwise", EInputEvent::IE_Pressed, this, &ThisClass::RotateBuildClockwise);
+	PlayerInputComponent->BindAction("RotateBuildAntiClockwise", EInputEvent::IE_Pressed, this, &ThisClass::RotateBuildAntiClockwise);
+	PlayerInputComponent->BindAction("RotateBuildClockwise", EInputEvent::IE_Released, this, &ThisClass::StopRotatingBuild);
+	PlayerInputComponent->BindAction("RotateBuildAntiClockwise", EInputEvent::IE_Released, this, &ThisClass::StopRotatingBuild);
 }
 
 void APlayerCharacter::MoveForward(float AxisValue)
@@ -162,6 +168,38 @@ void APlayerCharacter::PlaceBuildPressed()
 	if (BuildComponent)
 	{
 		BuildComponent->PlaceBuilding();
+	}
+}
+
+void APlayerCharacter::InteractButtonPressed()
+{
+	if (InteractionObject)
+	{
+		InteractionObject->Interact();
+	}
+}
+
+void APlayerCharacter::RotateBuildClockwise()
+{
+	if (BuildComponent)
+	{
+		BuildComponent->StartRotateBuild(true);
+	}
+}
+
+void APlayerCharacter::RotateBuildAntiClockwise()
+{
+	if (BuildComponent)
+	{
+		BuildComponent->StartRotateBuild(false);
+	}
+}
+
+void APlayerCharacter::StopRotatingBuild()
+{
+	if (BuildComponent)
+	{
+		BuildComponent->StopRotatingBuild();
 	}
 }
 

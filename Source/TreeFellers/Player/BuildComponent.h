@@ -7,6 +7,7 @@
 #include "Engine/DataTable.h"
 #include "BuildComponent.generated.h"
 
+class USnapCollider;
 USTRUCT(BlueprintType)
 struct FBuildObject : public FTableRowBase
 {
@@ -18,6 +19,8 @@ struct FBuildObject : public FTableRowBase
 	TSubclassOf<AActor> ObjectActorClass;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 	FName TagName;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+	TSubclassOf<AActor> DestructableMesh;
 };
 
 
@@ -39,6 +42,8 @@ public:
 	void NextBuildObject();
 	void PreviousBuildObject();
 	void PlaceBuilding();
+	void StartRotateBuild(bool bRotateClockwise);
+	void StopRotatingBuild();
 
 protected:
 	// Called when the game starts
@@ -63,6 +68,8 @@ protected:
 	float TraceZOffset = 100.f;
 	UPROPERTY(EditAnywhere, Category = "Parameters")
 	float TraceBuffer = 0.05f;
+	UPROPERTY(EditAnywhere, Category = "Parameters")
+	float RotationMagnitude = 5.f;
 
 	UPROPERTY(EditAnywhere, Category = "Parameters")
 	UDataTable* BuildObjects;
@@ -73,8 +80,14 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "Materials")
 	UMaterialInstance* RedPreview;
 
+	/* Sound */
+	UPROPERTY(EditAnywhere)
+	class USoundCue* BuildPlaceSFX;
+
 	void SetObjectMaterial(bool bIsGreen);
-	bool DetectSnapColliders(ABuildable* Buildable, UPrimitiveComponent* HitComponent);
+	bool DetectSnapColliders(ABuildable* Buildable, USnapCollider* HitComponent);
+
+	void RotateBuild();
 
 private:
 	FTransform ObjectTransform;
@@ -89,6 +102,13 @@ private:
 	void PreviewObjectLocation();
 	void ChangeMesh();
 	void SpawnBuildActor();
+
+	bool bIsSnapping = false;
+	UPROPERTY();
+	USnapCollider* CurrentSnapCollider;
+
+	bool bRotateBuild = false;
+	bool bRotateClockwise = true;
 
 public:
 	FORCEINLINE void SetCameraComponent(UCameraComponent* NewCameraComponent) { CameraComponent = NewCameraComponent; };

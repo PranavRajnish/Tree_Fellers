@@ -3,6 +3,7 @@
 
 #include "Buildable.h"
 #include "Components/BoxComponent.h"
+#include "SnapCollider.h"
 
 ABuildable::ABuildable()
 {
@@ -27,74 +28,19 @@ void ABuildable::Tick(float DeltaTime)
 
 }
 
-//#if WITH_EDITOR
-//
-//void ABuildable::PostInitProperties()
-//{
-//	Super::PostInitProperties();
-//
-//	SnapColliders.Empty();
-//	for (int32 i = 0; i < NumberOfSnapColliders; i++)
-//	{
-//		UE_LOG(LogTemp, Warning, TEXT("Collider%d"), i);
-//		
-//		UBoxComponent* BoxComponent = NewObject<UBoxComponent>(this, UBoxComponent::StaticClass(), TEXT("SnapCollider"));
-//		if (BoxComponent)
-//		{
-//			BoxComponent->CreationMethod = EComponentCreationMethod::Instance;
-//
-//			BoxComponent->AttachToComponent(GetRootComponent(), FAttachmentTransformRules::SnapToTargetIncludingScale);
-//			BoxComponent->RegisterComponent();
-//
-//			SnapColliders.Add(BoxComponent);
-//		}
-//	}
-//
-//}
-//
-//void ABuildable::PostEditChangeProperty(FPropertyChangedEvent& PropertyChangedEvent)
-//{
-//	Super::PostEditChangeProperty(PropertyChangedEvent);
-//
-//	for (int32 i = 0; i < SnapColliders.Num(); i++)
-//	{
-//		SnapColliders[i]->UnregisterComponent();
-//	}
-//	SnapColliders.Empty();
-//
-//	for (int32 i = 0; i < NumberOfSnapColliders; i++)
-//	{
-//		UE_LOG(LogTemp, Warning, TEXT("Collider%d"), i);
-//
-//		UBoxComponent* BoxComponent = NewObject<UBoxComponent>(this, UBoxComponent::StaticClass(), TEXT("SnapCollider"));
-//		if (BoxComponent)
-//		{
-//			BoxComponent->CreationMethod = EComponentCreationMethod::Instance;
-//
-//			BoxComponent->AttachToComponent(GetRootComponent(), FAttachmentTransformRules::SnapToTargetIncludingScale);
-//			BoxComponent->RegisterComponent();
-//
-//			SnapColliders.Add(BoxComponent);
-//		}
-//	}
-//
-//}
-//
-//#endif
-
-TArray<UBoxComponent*> ABuildable::GetSnapColliders(FName TagName)
+TArray<USnapCollider*> ABuildable::GetSnapColliders(FName TagName)
 {
-	TArray<UBoxComponent*> BoxComponents;
-	TArray<UActorComponent*> ActorComponents = GetComponentsByTag(UBoxComponent::StaticClass(), TagName);
+	TArray<USnapCollider*> SnapColliders;
+	TArray<UActorComponent*> ActorComponents = GetComponentsByTag(USnapCollider::StaticClass(), TagName);
 	for (UActorComponent* c : ActorComponents)
 	{
-		UBoxComponent* b = Cast<UBoxComponent>(c);
+		USnapCollider* b = Cast<USnapCollider>(c);
 		if (b)
-			BoxComponents.Add(b);
+			SnapColliders.Add(b);
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("Number of snap colliders: %d"), BoxComponents.Num());
-	return BoxComponents;
+	UE_LOG(LogTemp, Warning, TEXT("Number of snap colliders: %d"), SnapColliders.Num());
+	return SnapColliders;
 }
 
 void ABuildable::SetObjectMesh(UStaticMesh* NewMesh)

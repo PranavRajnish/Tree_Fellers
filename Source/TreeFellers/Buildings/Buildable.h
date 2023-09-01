@@ -7,6 +7,7 @@
 #include "Buildable.generated.h"
 
 class UBoxComponent;
+class USnapCollider;
 
 UCLASS()
 class TREEFELLERS_API ABuildable : public AActor
@@ -17,7 +18,7 @@ public:
 	ABuildable();
 	virtual void Tick(float DeltaTime) override;
 
-	TArray<UBoxComponent*> GetSnapColliders(FName TagName);
+	TArray<USnapCollider*> GetSnapColliders(FName TagName);
 	void SetObjectMesh(UStaticMesh* NewMesh);
 
 
@@ -31,10 +32,6 @@ protected:
 
 	UPROPERTY(EditAnywhere)
 	UStaticMeshComponent* ObjectMesh;
-	UPROPERTY(EditAnywhere)
-	int32 NumberOfSnapColliders;
-	UPROPERTY(EditAnywhere)
-	TArray<UBoxComponent*> SnapColliders;
 
 public:	
 
