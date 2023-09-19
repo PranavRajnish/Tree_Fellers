@@ -8,6 +8,8 @@
 
 class  UBuildComponent;
 class ADoor;
+class AAxe;
+class AHammer;
 
 UCLASS()
 class TREEFELLERS_API APlayerCharacter : public ACharacter
@@ -36,10 +38,15 @@ private:
 	UPROPERTY(VisibleAnywhere);
 	UBuildComponent* BuildComponent;
 
-	UPROPERTY(EditAnywhere, Category = Axe)
-	TSubclassOf<class AAxe> AxeClass;
+	UPROPERTY(EditAnywhere, Category = Tools)
+	TSubclassOf<AAxe> AxeClass;
 	UPROPERTY(VisibleAnywhere)
 	AAxe* Axe;
+
+	UPROPERTY(EditAnywhere, Category = Tools)
+		TSubclassOf<AHammer> HammerClass;
+	UPROPERTY(VisibleAnywhere)
+		AHammer* Hammer;
 
 	UPROPERTY(VisibleAnywhere)
 	APlayerController* PlayerController;
@@ -68,15 +75,26 @@ private:
 
 	// Axe
 	UFUNCTION(Server, Reliable)
-	void ServerSwingAxe();
+	void ServerSwingTool();
 	UFUNCTION(NetMulticast, Reliable)
-	void MulticastSwingAxe();
+	void MulticastSwingTool();
+
+	// Hammer
+	//UFUNCTION(Server, Reliable)
+	//	void ServerSwingHammer();
+	//UFUNCTION(NetMulticast, Reliable)
+	//	void MulticastSwingHammer();
 
 	bool bCalculateAttackCollision = false;
 	bool bIsBuildModeOn = false;
-
 	UPROPERTY(EditAnywhere, Category = "Camera")
 	TSubclassOf<class UCameraShakeBase> SwingCameraShake;
+	
+	void SwitchTool(bool bSwitchToHammer);
+	UFUNCTION(Server, Reliable)
+		void ServerSwitchTool(bool bSwitchToHammer);
+	UFUNCTION(NetMulticast, Reliable)
+		void MulticastSwitchTool(bool bSwitchToHammer);
 
 	// Interaction
 	UPROPERTY()

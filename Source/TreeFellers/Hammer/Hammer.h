@@ -4,18 +4,18 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "Axe.generated.h"
+#include "Hammer.generated.h"
 
 UCLASS()
-class TREEFELLERS_API AAxe : public AActor
+class TREEFELLERS_API AHammer : public AActor
 {
 	GENERATED_BODY()
 	
-public:	
-	AAxe();
+public:
+	AHammer();
 	virtual void Tick(float DeltaTime) override;
 
-	void CalculateAxeCollision();
+	void CalculateCollision();
 	void PlaySwingSound();
 
 
@@ -24,27 +24,24 @@ protected:
 
 private:
 	UPROPERTY(VisibleAnywhere)
-	class UStaticMeshComponent* Mesh;
+		class UStaticMeshComponent* Mesh;
 	UPROPERTY(VisibleAnywhere)
-	class USceneComponent* CollisionPoint;
+		class USceneComponent* CollisionPoint;
 
 	UPROPERTY(VisibleAnywhere)
-	class APlayerCharacter* Player;
+		class APlayerCharacter* Player;
 
 	UPROPERTY(EditAnywhere)
-	class USoundCue* WeaponSwingSFX;
+		class USoundCue* WeaponSwingSFX;
 
 	UPROPERTY(EditAnywhere, Category = "Defaults")
-	float CollisionRadius = 20.f;
-	UPROPERTY(EditAnywhere, Category = "Defaults")
-	float ImpactRadius = 20.f;
-	UPROPERTY(EditAnywhere, Category = "Defaults")
-	float ImpactDepth = 10.f;
+		float CollisionRadius = 20.f;
+
 	bool bHasHitThisSwing = false;
 
-public:	
+
+public:
 	FORCEINLINE void SetHasHitThisSwing(bool bHasHit) { bHasHitThisSwing = bHasHit; }
-	FORCEINLINE float GetImpactRadius() const { return ImpactRadius; }
-	FORCEINLINE float GetImpactDepth() const { return ImpactDepth; }
 	FORCEINLINE UStaticMeshComponent* GetMesh() const { return Mesh; }
+
 };

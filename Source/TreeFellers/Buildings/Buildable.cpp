@@ -4,6 +4,7 @@
 #include "Buildable.h"
 #include "Components/BoxComponent.h"
 #include "SnapCollider.h"
+#include "GeometryCollection/GeometryCollectionComponent.h"
 
 ABuildable::ABuildable()
 {
@@ -12,6 +13,9 @@ ABuildable::ABuildable()
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootComponent"));
 	ObjectMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ObjectMesh"));
 	ObjectMesh->SetupAttachment(RootComponent);
+
+	/*GeometryCollectionComponent = CreateDefaultSubobject<UGeometryCollectionComponent>(TEXT("DestructableMesh"));
+	GeometryCollectionComponent->SetupAttachment(RootComponent);*/
 
 	UE_LOG(LogTemp, Warning, TEXT("In Constructor of Buildable"));
 }
@@ -48,4 +52,29 @@ void ABuildable::SetObjectMesh(UStaticMesh* NewMesh)
 	if (!ObjectMesh) return;
 
 	ObjectMesh->SetStaticMesh(NewMesh);
+}
+
+void ABuildable::Impacted(FVector ImpactPosition)
+{
+	if (!ObjectMesh) return;
+	UE_LOG(LogTemp, Warning, TEXT("Buildable Hit"));
+
+	ObjectMesh->SetVisibility(false);
+	ObjectMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+	DestroyMesh(ImpactPosition);
+
+	/*GeometryCollectionComponent = NewObject<UGeometryCollectionComponent>(this, UGeometryCollectionComponent::StaticClass(), TEXT("GeometryCollection"));
+	if (GeometryCollectionComponent)
+	{
+		GeometryCollectionComponent->CreationMethod = EComponentCreationMethod::Instance;
+
+		GeometryCollectionComponent->SetupAttachment(GetRootComponent());
+		GeometryCollectionComponent->RegisterComponent();
+	}*/
+}
+
+void ABuildable::DestroyMesh_Implementation(FVector ImpactPosition)
+{
+	UE_LOG(LogTemp, Warning, TEXT("Blueprint event not implemented!"));
 }

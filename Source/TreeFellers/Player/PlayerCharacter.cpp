@@ -4,6 +4,7 @@
 #include "PlayerCharacter.h"
 #include "Camera/CameraComponent.h"
 #include "TreeFellers/Axe/Axe.h"
+#include "TreeFellers/Hammer/Hammer.h"
 #include "Animation/AnimMontage.h"
 #include "Net/UnrealNetwork.h"
 #include "Kismet/GameplayStatics.h"
@@ -38,10 +39,18 @@ void APlayerCharacter::BeginPlay()
 	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
 	Axe = GetWorld()->SpawnActor<AAxe>(AxeClass, FVector::ZeroVector, FRotator::ZeroRotator, SpawnParams);
+	Hammer = GetWorld()->SpawnActor<AHammer>(HammerClass, FVector::ZeroVector, FRotator::ZeroRotator, SpawnParams);
 	if (Axe)
 	{
 		Axe->SetOwner(this);
 		Axe->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("RightHandSocket"));
+	}
+	if (Hammer)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Spawning Hammer.."));
+		Hammer->SetOwner(this);
+		Hammer->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, FName("RightHandSocket"));
+		Hammer->GetMesh()->SetVisibility(false);
 	}
 	if (BuildComponent)
 	{
@@ -57,10 +66,18 @@ void APlayerCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	if (HasAuthority() && bCalculateAttackCollision && Axe)
+	if (HasAuthority() && bCalculateAttackCollision)
 	{
-		Axe->CalculateAxeCollision();
+		if (!bIsBuildModeOn && Axe)
+		{
+			Axe->CalculateAxeCollision();
+		}
+		if (bIsBuildModeOn && Hammer)
+		{
+			Hammer->CalculateCollision();
+		}
 	}
+
 
 }
 
@@ -148,18 +165,20 @@ void APlayerCharacter::AttackButtonPressed()
 		}
 
 		bIsSwingingAxe = true;
-		ServerSwingAxe();
+		ServerSwingTool();
 		
 	}
 }
 
 void APlayerCharacter::BuildButtonPressed()
 {
-	if (BuildComponent)
+	if (BuildComponent && !bIsSwingingAxe)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Build Button Pressed"));
 		bIsBuildModeOn = !bIsBuildModeOn;
+		SwitchTool(bIsBuildModeOn);
 		BuildComponent->SetBuildModeOn(bIsBuildModeOn);
+
 	}
 }
 
@@ -221,37 +240,106 @@ void APlayerCharacter::MouseWheelDown()
 
 #pragma endregion Player Input 
 
-
-void APlayerCharacter::ServerSwingAxe_Implementation()
+void APlayerCharacter::SwitchTool(bool bSwitchToHammer)
 {
-	if (IsLocallyControlled())
-	{
-		PlayAnimMontage(AxeSwing);
+	if (!Axe || !Hammer) return;
 
-		if (Axe)
-		{
-			Axe->PlaySwingSound();
-		}
-		if (SwingCameraShake && PlayerController)
-		{
-			//PlayerController->PlayerCameraManager->StartCameraShake(SwingCameraShake);
-		}
+	if (bSwitchToHammer)
+	{
+		Axe->GetMesh()->SetVisibility(false);
+		Hammer->GetMesh()->SetVisibility(true);
+	}
+	else
+	{
+		Axe->GetMesh()->SetVisibility(true);
+		Hammer->GetMesh()->SetVisibility(false);
 	}
 
-	MulticastSwingAxe();
+	ServerSwitchTool(bSwitchToHammer);
 }
 
-void APlayerCharacter::MulticastSwingAxe_Implementation()
+void APlayerCharacter::ServerSwitchTool_Implementation(bool bSwitchToHammer)
+{
+	MulticastSwitchTool(bSwitchToHammer);
+}
+
+void APlayerCharacter::MulticastSwitchTool_Implementation(bool bSwitchToHammer)
 {
 	if (!IsLocallyControlled())
 	{
-		PlayAnimMontage(AxeSwing);
-
-		if (Axe)
+		if (bSwitchToHammer)
 		{
-			Axe->PlaySwingSound();
+			Axe->GetMesh()->SetVisibility(false);
+			Hammer->GetMesh()->SetVisibility(true);
+		}
+		else
+		{
+			Axe->GetMesh()->SetVisibility(true);
+			Hammer->GetMesh()->SetVisibility(false);
 		}
 	}
+}
+
+void APlayerCharacter::ServerSwingTool_Implementation()
+{
+	if (IsLocallyControlled())
+	{
+		if (bIsBuildModeOn)
+		{
+			PlayAnimMontage(AxeSwing);
+
+			if (Hammer)
+			{
+				Hammer->PlaySwingSound();
+			}
+			if (SwingCameraShake && PlayerController)
+			{
+				//PlayerController->PlayerCameraManager->StartCameraShake(SwingCameraShake);
+			}
+		}
+		else
+		{
+			PlayAnimMontage(AxeSwing);
+
+			if (Axe)
+			{
+				Axe->PlaySwingSound();
+			}
+			if (SwingCameraShake && PlayerController)
+			{
+				//PlayerController->PlayerCameraManager->StartCameraShake(SwingCameraShake);
+			}
+		}
+		
+	}
+
+	MulticastSwingTool();
+}
+
+void APlayerCharacter::MulticastSwingTool_Implementation()
+{
+	if (!IsLocallyControlled())
+	{
+		if (bIsBuildModeOn)
+		{
+			PlayAnimMontage(AxeSwing);
+
+			if (Hammer)
+			{
+				Hammer->PlaySwingSound();
+			}
+		}
+		else
+		{
+			PlayAnimMontage(AxeSwing);
+
+			if (Axe)
+			{
+				Axe->PlaySwingSound();
+			}
+		}
+	}
+
 }
 
 void APlayerCharacter::StartCalculateAttackCollision()
@@ -266,6 +354,10 @@ void APlayerCharacter::StopCalculateAttackCollision()
 	if (Axe)
 	{
 		Axe->SetHasHitThisSwing(false);
+	}
+	if (Hammer)
+	{
+		Hammer->SetHasHitThisSwing(false);
 	}
 }
 

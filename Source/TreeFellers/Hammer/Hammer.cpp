@@ -1,18 +1,16 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "Axe.h"
-#include "Components/StaticMeshComponent.h"
-#include "Components/SceneComponent.h"
-#include "Kismet/KismetSystemLibrary.h"
+#include "Hammer.h"
 #include "Kismet/GameplayStatics.h"
-#include "TreeFellers/Tree/ChoppableTree.h"
-#include "TreeFellers/Player/PlayerCharacter.h"
 #include "Sound/SoundCue.h"
+#include "TreeFellers/Buildings/Buildable.h"
+#include "TreeFellers/Player/PlayerCharacter.h"
 
-AAxe::AAxe()
+// Sets default values
+AHammer::AHammer()
 {
-	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bCanEverTick = false;
 
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootComponent"));
 	Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Axe Mesh"));
@@ -23,19 +21,21 @@ AAxe::AAxe()
 
 }
 
-void AAxe::BeginPlay()
+// Called when the game starts or when spawned
+void AHammer::BeginPlay()
 {
 	Super::BeginPlay();
+	
 }
 
-void AAxe::Tick(float DeltaTime)
+// Called every frame
+void AHammer::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
 }
 
-
-void AAxe::CalculateAxeCollision()
+void AHammer::CalculateCollision()
 {
 
 	if (!bHasHitThisSwing && HasAuthority())
@@ -44,36 +44,36 @@ void AAxe::CalculateAxeCollision()
 		FVector CollisionLocation = CollisionPoint->GetComponentLocation();
 		//UE_LOG(LogTemp, Warning, TEXT("Axe point : %s"), *CollisionLocation.ToString());
 		TArray<TEnumAsByte<EObjectTypeQuery>> TraceObjectTypes;
-		TraceObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_GameTraceChannel1));
+		TraceObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_GameTraceChannel4));
 		FHitResult HitResult;
 
 		bHasHitThisSwing = UKismetSystemLibrary::SphereTraceSingleForObjects(this, CollisionLocation, CollisionLocation, CollisionRadius,
-			TraceObjectTypes, false, TArray<AActor*>(), EDrawDebugTrace::None , HitResult, true);
+			TraceObjectTypes, false, TArray<AActor*>(), EDrawDebugTrace::ForDuration, HitResult, true);
 
 		if (bHasHitThisSwing)
 		{
-			AChoppableTree* Tree = Cast<AChoppableTree>(HitResult.GetActor());
-			if (Tree)
+			ABuildable* Buildable = Cast<ABuildable>(HitResult.GetActor());
+			if (Buildable)
 			{
-				Tree->AxeImpact(CollisionLocation, HitResult.ImpactNormal, this);
+				UE_LOG(LogTemp, Warning, TEXT("Axe point : %s"), *CollisionLocation.ToString());
+				Buildable->Impacted(CollisionLocation);
+				
 			}
 
-			Player = Player? Player : Cast<APlayerCharacter>(GetOwner());
+			Player = Player ? Player : Cast<APlayerCharacter>(GetOwner());
 			if (Player)
 			{
 				Player->AxeImpact();
 			}
 
-		}	
+		}
 	}
-	
 }
 
-void AAxe::PlaySwingSound()
+void AHammer::PlaySwingSound()
 {
 	if (!WeaponSwingSFX) return;
 
 	UGameplayStatics::PlaySoundAtLocation(this, WeaponSwingSFX, GetActorLocation());
 }
-
 

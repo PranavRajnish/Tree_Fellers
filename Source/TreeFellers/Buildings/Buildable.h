@@ -8,6 +8,7 @@
 
 class UBoxComponent;
 class USnapCollider;
+class UGeometryCollectionComponent;
 
 UCLASS()
 class TREEFELLERS_API ABuildable : public AActor
@@ -21,6 +22,10 @@ public:
 	TArray<USnapCollider*> GetSnapColliders(FName TagName);
 	void SetObjectMesh(UStaticMesh* NewMesh);
 
+	void Impacted(FVector ImpactPosition);
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	void DestroyMesh(FVector ImpactPosition);
 
 protected:
 	virtual void BeginPlay() override;
@@ -32,6 +37,8 @@ protected:
 
 	UPROPERTY(EditAnywhere)
 	UStaticMeshComponent* ObjectMesh;
+	/*UPROPERTY(VisibleAnywhere)
+	UGeometryCollectionComponent* GeometryCollectionComponent;*/
 
 public:	
 
