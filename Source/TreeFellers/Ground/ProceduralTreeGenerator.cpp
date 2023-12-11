@@ -201,8 +201,10 @@ void UProceduralTreeGenerator::SpawnTrees()
 			FVector SpawnLocation(Position2D.X, Position2D.Y, HitResult.ImpactPoint.Z);
 			SpawnLocation += (-HitResult.ImpactNormal) * TreeInsertionDepth;
 
+			// Rotating so that the tree is perpendicular to the ground.
 			FRotator RotFromYZ = UKismetMathLibrary::MakeRotFromYZ(FVector(0.f, 1.f, 0.f), HitResult.ImpactNormal);
 			FRotator RotFromXZ = UKismetMathLibrary::MakeRotFromXZ(FVector(1.f, 0.f, 0.f), HitResult.ImpactNormal);
+
 			FRotator SpawnRotation = FRotator(RotFromYZ.Pitch, 0.f, RotFromXZ.Roll);
 			if (bRandomYaw)
 			{

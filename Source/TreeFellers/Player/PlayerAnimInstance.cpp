@@ -25,6 +25,7 @@ void UPlayerAnimInstance::NativeUpdateAnimation(float DeltaTime)
 
 	Pitch = CalculateAOPitch();
 	bIsSwingingAxe = PlayerCharacter->GetIsSwingingAxe();
+	bIsInBuildMode = PlayerCharacter->GetIsInBuildMode();
 }
 
 void UPlayerAnimInstance::AxeSwingFinished()

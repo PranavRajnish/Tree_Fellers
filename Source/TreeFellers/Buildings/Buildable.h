@@ -9,6 +9,7 @@
 class UBoxComponent;
 class USnapCollider;
 class UGeometryCollectionComponent;
+class USoundCue;
 
 UCLASS()
 class TREEFELLERS_API ABuildable : public AActor
@@ -39,6 +40,8 @@ protected:
 	UStaticMeshComponent* ObjectMesh;
 	/*UPROPERTY(VisibleAnywhere)
 	UGeometryCollectionComponent* GeometryCollectionComponent;*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	USoundCue* WallBreakSFX;
 
 public:	
 

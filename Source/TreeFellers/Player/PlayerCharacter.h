@@ -96,6 +96,8 @@ private:
 	UFUNCTION(NetMulticast, Reliable)
 		void MulticastSwitchTool(bool bSwitchToHammer);
 
+	void SetToolVisibility(bool visibility);
+
 	// Interaction
 	UPROPERTY()
 	ADoor* InteractionObject = nullptr;
@@ -107,5 +109,6 @@ public:
 	FORCEINLINE AAxe* GetAxe() const { return Axe; }
 	FORCEINLINE ADoor* GetInteractionObject() const { return InteractionObject; }
 	FORCEINLINE void SetInteractionObject(ADoor* NewInteractionObject) { InteractionObject = NewInteractionObject; }
+	FORCEINLINE bool GetIsInBuildMode() const { return bIsBuildModeOn; }
 
 };

@@ -147,7 +147,7 @@ void APlayerCharacter::LookUp(float AxisValue)
 
 void APlayerCharacter::AttackButtonPressed()
 {
-	if (!bIsSwingingAxe)
+	if (!bIsSwingingAxe && !bIsBuildModeOn)
 	{
 		if (!HasAuthority())
 		{
@@ -176,7 +176,8 @@ void APlayerCharacter::BuildButtonPressed()
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Build Button Pressed"));
 		bIsBuildModeOn = !bIsBuildModeOn;
-		SwitchTool(bIsBuildModeOn);
+		//SwitchTool(bIsBuildModeOn);
+		SetToolVisibility(!bIsBuildModeOn);
 		BuildComponent->SetBuildModeOn(bIsBuildModeOn);
 
 	}
@@ -340,6 +341,18 @@ void APlayerCharacter::MulticastSwingTool_Implementation()
 		}
 	}
 
+}
+
+void APlayerCharacter::SetToolVisibility(bool visiblity)
+{
+	if (Axe)
+	{
+		Axe->SetActorHiddenInGame(!visiblity);
+	}
+	if (Hammer)
+	{
+		Hammer->SetActorHiddenInGame(!visiblity);
+	}
 }
 
 void APlayerCharacter::StartCalculateAttackCollision()

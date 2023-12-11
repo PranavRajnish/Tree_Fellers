@@ -29,6 +29,8 @@ private:
 	float Pitch;
 	UPROPERTY(BlueprintReadOnly, Category = Character, meta = (AllowPrivateAccess = "true"))
 	bool bIsSwingingAxe;
+	UPROPERTY(BlueprintReadOnly, Category = Character, meta = (AllowPrivateAccess = "true"))
+	bool bIsInBuildMode;
 
 	float CalculateAOPitch();
 };

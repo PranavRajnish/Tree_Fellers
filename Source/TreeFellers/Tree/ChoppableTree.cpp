@@ -88,6 +88,7 @@ void AChoppableTree::BeginPlay()
 			UpVertexColors.Add(FColor::Blue);
 			VertexColors.Add(FLinearColor::Blue);
 		}
+
 		UKismetProceduralMeshLibrary::CalculateTangentsForMesh(Vertices, Triangles, UV0, Normals, Tangents);
 		TreeProcMesh->UpdateMeshSection(0, Vertices, Normals, UV0, UpVertexColors, Tangents);
 		TreeProcMesh->SetMaterial(0, TreeMaterial);

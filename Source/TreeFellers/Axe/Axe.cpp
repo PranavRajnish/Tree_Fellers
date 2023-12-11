@@ -9,6 +9,7 @@
 #include "TreeFellers/Tree/ChoppableTree.h"
 #include "TreeFellers/Player/PlayerCharacter.h"
 #include "Sound/SoundCue.h"
+#include "TreeFellers/Buildings/Buildable.h"
 
 AAxe::AAxe()
 {
@@ -45,6 +46,7 @@ void AAxe::CalculateAxeCollision()
 		//UE_LOG(LogTemp, Warning, TEXT("Axe point : %s"), *CollisionLocation.ToString());
 		TArray<TEnumAsByte<EObjectTypeQuery>> TraceObjectTypes;
 		TraceObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_GameTraceChannel1));
+		TraceObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_GameTraceChannel4));
 		FHitResult HitResult;
 
 		bHasHitThisSwing = UKismetSystemLibrary::SphereTraceSingleForObjects(this, CollisionLocation, CollisionLocation, CollisionRadius,
@@ -56,6 +58,14 @@ void AAxe::CalculateAxeCollision()
 			if (Tree)
 			{
 				Tree->AxeImpact(CollisionLocation, HitResult.ImpactNormal, this);
+			}
+
+			ABuildable* Buildable = Cast<ABuildable>(HitResult.GetActor());
+			if (Buildable)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Axe point : %s"), *CollisionLocation.ToString());
+				Buildable->Impacted(CollisionLocation);
+
 			}
 
 			Player = Player? Player : Cast<APlayerCharacter>(GetOwner());

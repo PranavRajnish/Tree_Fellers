@@ -5,6 +5,7 @@
 #include "Components/BoxComponent.h"
 #include "SnapCollider.h"
 #include "GeometryCollection/GeometryCollectionComponent.h"
+#include "Sound/SoundCue.h"
 
 ABuildable::ABuildable()
 {
