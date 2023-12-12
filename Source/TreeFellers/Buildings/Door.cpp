@@ -8,7 +8,9 @@
 
 ADoor::ADoor()
 {
+
 	PrimaryActorTick.bCanEverTick = true;
+	bReplicates = true;
 
 	Hinge = CreateDefaultSubobject<USceneComponent>(TEXT("Hinge"));
 	Hinge->SetupAttachment(RootComponent);

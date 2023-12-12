@@ -286,23 +286,40 @@ void UBuildComponent::SpawnBuildActor()
 {
 	if (!BuildObjects) return;
 
+	ServerSpawnBuildActor(BuildObjectIndex, ObjectTransform, CurrentSnapCollider);
+}
+
+
+void UBuildComponent::ServerSpawnBuildActor_Implementation(int BuildIndex, FTransform SpawnTransform, USnapCollider* CurSnapCollider)
+{
 	static const FString ContextString(TEXT("Build Objects Context"));
-	FBuildObject* BuildObject = BuildObjects->FindRow<FBuildObject>(BuildObjectRowNames[BuildObjectIndex], ContextString, true);
+	FBuildObject* BuildObject = BuildObjects->FindRow<FBuildObject>(BuildObjectRowNames[BuildIndex], ContextString, true);
 
 	if (BuildObject && BuildObject->ObjectActorClass)
 	{
-		ABuildable* NewBuildable = GetWorld()->SpawnActor<ABuildable>(BuildObject->ObjectActorClass, ObjectTransform);
-		NewBuildable->SetObjectMesh(BuildObject->ObjectMesh);
+		ABuildable* NewBuildable = GetWorld()->SpawnActor<ABuildable>(BuildObject->ObjectActorClass, SpawnTransform);
+		
+		MulticastSpawnBuildActor(NewBuildable, CurSnapCollider, BuildIndex, SpawnTransform);
+	}
+}
 
-		if (CurrentSnapCollider)
+void UBuildComponent::MulticastSpawnBuildActor_Implementation(ABuildable* NewBuildable, USnapCollider* CurSnapCollider, int BuildIndex, FTransform SpawnTransform)
+{
+	static const FString ContextString(TEXT("Build Objects Context"));
+	FBuildObject* BuildObject = BuildObjects->FindRow<FBuildObject>(BuildObjectRowNames[BuildIndex], ContextString, true);
+
+
+	if (BuildObject && BuildObject->ObjectMesh)
+	{
+		//NewBuildable->SetObjectMesh(BuildObject->ObjectMesh);
+		if (CurSnapCollider)
 		{
-			CurrentSnapCollider->SetIsInUse(true);
+			CurSnapCollider->SetIsInUse(true);
 		}
-
 		if (BuildPlaceSFX)
 		{
-			UGameplayStatics::PlaySoundAtLocation(this, BuildPlaceSFX, ObjectTransform.GetLocation());
+			UGameplayStatics::PlaySoundAtLocation(this, BuildPlaceSFX, SpawnTransform.GetLocation());
 		}
-	} 
+	}
 }
 

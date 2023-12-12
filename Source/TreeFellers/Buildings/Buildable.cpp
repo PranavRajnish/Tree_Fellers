@@ -10,10 +10,12 @@
 ABuildable::ABuildable()
 {
 	PrimaryActorTick.bCanEverTick = false;
+	bReplicates = true;
 
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("RootComponent"));
 	ObjectMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("ObjectMesh"));
 	ObjectMesh->SetupAttachment(RootComponent);
+
 
 	/*GeometryCollectionComponent = CreateDefaultSubobject<UGeometryCollectionComponent>(TEXT("DestructableMesh"));
 	GeometryCollectionComponent->SetupAttachment(RootComponent);*/
@@ -60,8 +62,8 @@ void ABuildable::Impacted(FVector ImpactPosition)
 	if (!ObjectMesh) return;
 	UE_LOG(LogTemp, Warning, TEXT("Buildable Hit"));
 
-	ObjectMesh->SetVisibility(false);
-	ObjectMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	/*ObjectMesh->SetVisibility(false);
+	ObjectMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);*/
 
 	DestroyMesh(ImpactPosition);
 

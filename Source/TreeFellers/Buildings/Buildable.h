@@ -36,7 +36,7 @@ protected:
 //	virtual void PostInitProperties() override;
 //#endif
 
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UStaticMeshComponent* ObjectMesh;
 	/*UPROPERTY(VisibleAnywhere)
 	UGeometryCollectionComponent* GeometryCollectionComponent;*/

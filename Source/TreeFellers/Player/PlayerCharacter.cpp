@@ -23,6 +23,7 @@ APlayerCharacter::APlayerCharacter()
 
 	BuildComponent = CreateDefaultSubobject<UBuildComponent>(TEXT("Build Component"));
 	AddOwnedComponent(BuildComponent);
+	BuildComponent->SetIsReplicated(true);
 
 	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
 	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block); 

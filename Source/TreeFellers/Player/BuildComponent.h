@@ -102,6 +102,11 @@ private:
 	void PreviewObjectLocation();
 	void ChangeMesh();
 	void SpawnBuildActor();
+	UFUNCTION(Server, Reliable)
+		void ServerSpawnBuildActor(int BuildIndex, FTransform SpawnTransform, USnapCollider* CurSnapCollider);
+	UFUNCTION(NetMulticast, Reliable)
+		void MulticastSpawnBuildActor(ABuildable* NewBuildable, USnapCollider* CurSnapCollider, int BuildIndex, FTransform SpawnTransform);
+
 
 	bool bIsSnapping = false;
 	UPROPERTY();
